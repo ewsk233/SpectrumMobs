@@ -1,0 +1,8 @@
+skill manuscript_phase_finale {
+    group = "phase"
+    concurrency = "replace"
+    for player in targeter.players.within(caster.position, 40) {
+        mechanic.title.show(player, "&4终焉篇章", "&5遗文正在失去稳定形态", 5t, 60t, 10t)
+    }
+    mechanic.particles.circle(caster.position, SOUL_FIRE_FLAME, 10, 128)
+}

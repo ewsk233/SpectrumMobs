@@ -1,0 +1,8 @@
+skill manuscript_fragment_behavior {
+    group = "fragment"
+    concurrency = "reject"
+    let players = targeter.players.within(caster.position, 18)
+    for player in targeter.random(players, 1) {
+        mechanic.projectile.homing(player, "PURPLE_WOOL", 0.55, 0.25, 5, 40t, 0.45, false)
+    }
+}

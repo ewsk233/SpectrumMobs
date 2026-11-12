@@ -1,0 +1,5 @@
+skill magma_lord_bolt {
+    group = "main"
+    concurrency = "reject"
+    mechanic.projectile.forward(material = "MAGMA_BLOCK", speed = 1.15, damage = 12, lifetime = 50t, hitRadius = 0.55, placeOnHit = false)
+}

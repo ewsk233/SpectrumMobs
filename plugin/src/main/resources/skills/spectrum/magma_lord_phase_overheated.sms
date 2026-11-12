@@ -1,0 +1,15 @@
+skill magma_lord_phase_overheated {
+    group = "phase"
+    concurrency = "replace"
+    mechanic.entity.potion(caster, "FIRE_RESISTANCE", 240t, 0)
+    let center = caster.position
+    mechanic.particles.circle(at = center, particle = FLAME, radius = 6, count = 72)
+    mechanic.particles.circle(at = center, particle = SOUL, radius = 5, count = 48)
+    let summoned = mechanic.mob.summon(id = "spectrum:magma_minion", at = center, count = 3)
+    for player in targeter.players.within(center, 20) {
+        mechanic.title.show(player, "&4过热阶段", "&c熔核君王即将崩裂", 5t, 40t, 8t)
+        mechanic.message.send(player, "&c熔核君王进入过热状态，熔岩喷发将更加频繁！")
+        mechanic.sound.play(player, "entity.generic.explode", 1, 0.7)
+        mechanic.actionbar.show(player, "&4新增仆从：${summoned}")
+    }
+}

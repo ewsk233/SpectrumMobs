@@ -1,0 +1,29 @@
+schema-version: 1
+id: spectrum:magma_minion
+type: MAGMA_CUBE
+
+display:
+  name: "&6熔岩仆从"
+  name-visible: true
+
+attributes:
+  max-health: 35.0
+  attack-damage: 6.0
+  movement-speed: 0.24
+  follow-range: 20.0
+  knockback-resistance: 0.4
+
+events:
+  attack:
+    - spectrum:magma_minion_bolt
+
+intervals:
+  - id: heat_pulse
+    period: 100t
+    skills:
+      - spectrum:magma_minion_pulse
+
+drops:
+  - material: MAGMA_CREAM
+    amount: 1
+    chance: 0.35

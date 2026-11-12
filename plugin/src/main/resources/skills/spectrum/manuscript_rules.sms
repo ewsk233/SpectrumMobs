@@ -1,0 +1,35 @@
+fn select_threat(candidates: List<Entity>): Entity {
+    for candidate in candidates {
+        if (condition.isPlayer(candidate)) {
+            return candidate
+        }
+    }
+    return target
+}
+
+fn incoming(amount: Number, cause: String): Number {
+    if (targeter.entities.tagged(caster.position, 20, "spectrum_manuscript_syntax").isEmpty == false) {
+        return 0.2
+    }
+    if (targeter.entities.tagged(caster.position, 24, "spectrum_manuscript_fragment").isEmpty == false) {
+        return 0.85
+    }
+    if (condition.hasTag(caster, "spectrum_manuscript_vulnerable")) {
+        return 1.5
+    }
+    return 1
+}
+
+fn outgoing(amount: Number, cause: String): Number {
+    if (condition.hasTag(caster, "spectrum_manuscript_finale")) {
+        return 1.2
+    }
+    return 1
+}
+
+fn echo_incoming(amount: Number, cause: String): Number {
+    if (condition.hasTag(caster, "spectrum_manuscript_true")) {
+        return 1
+    }
+    return 0
+}

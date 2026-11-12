@@ -1,0 +1,11 @@
+skill magma_minion_pulse {
+    group = "main"
+    concurrency = "reject"
+    let center = caster.position
+    mechanic.particles.circle(at = center, particle = FLAME, radius = 2, count = 24)
+    wait 10t
+    for player in targeter.players.within(center, 3) {
+        mechanic.damage(player, 4)
+        mechanic.ignite(player, 2s)
+    }
+}

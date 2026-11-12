@@ -1,0 +1,12 @@
+skill manuscript_echo_destroyed {
+    group = "phase"
+    concurrency = "replace"
+    if (condition.hasTag(target, "spectrum_manuscript_true")) {
+        mechanic.entity.addTag(caster, "spectrum_manuscript_vulnerable")
+        for player in targeter.players.within(caster.position, 32) {
+            mechanic.title.show(player, "&a伪本被识破", "&d缄言的核心暴露了", 5t, 50t, 10t)
+        }
+        wait 4s
+        mechanic.entity.removeTag(caster, "spectrum_manuscript_vulnerable")
+    }
+}

@@ -1,0 +1,15 @@
+skill manuscript_text_erasure {
+    cooldown = 14s
+    group = "major"
+    concurrency = "reject"
+    requires phase == "finale"
+    let center = caster.position
+    repeat 40 {
+        mechanic.particles.circle(center, REDSTONE, 8, 64)
+        wait 1t
+    }
+    for player in targeter.players.within(center, 8) {
+        mechanic.damage(player, 18)
+        mechanic.entity.push(player, center, 0.55)
+    }
+}

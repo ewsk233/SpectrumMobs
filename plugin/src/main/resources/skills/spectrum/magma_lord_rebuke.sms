@@ -1,0 +1,6 @@
+skill magma_lord_rebuke {
+    if (condition.isPlayer(target)) {
+        mechanic.damage(target, 4)
+        mechanic.ignite(target, 2s)
+    }
+}

@@ -1,0 +1,46 @@
+schema-version: 1
+id: spectrum:ember_guardian
+type: WITHER_SKELETON
+
+display:
+  name: "&6熔火守卫"
+  name-visible: true
+
+attributes:
+  max-health: 300.0
+  attack-damage: 10.0
+  movement-speed: 0.28
+  follow-range: 32.0
+  knockback-resistance: 0.5
+
+equipment:
+  main-hand:
+    material: NETHERITE_SWORD
+    drop-chance: 0.0
+
+events:
+  damaged:
+    - spectrum:flame_nova
+
+boss:
+  enabled: true
+  phases:
+    - id: normal
+      health-threshold: 1.0
+    - id: enraged
+      health-threshold: 0.5
+      display-name: "&c熔火守卫（狂暴）"
+      attributes:
+        attack-damage: 20.0
+        movement-speed: 0.34
+      on-enter:
+        - spectrum:boss_warning
+
+drops:
+  - material: DIAMOND
+    amount: 2
+    chance: 0.35
+
+model:
+  provider: modelengine
+  id: ember_guardian

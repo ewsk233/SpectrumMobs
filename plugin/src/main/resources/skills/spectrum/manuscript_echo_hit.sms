@@ -1,0 +1,9 @@
+skill manuscript_echo_hit {
+    group = "feedback"
+    concurrency = "reject"
+    let attacker = targeter.attacker()
+    if (condition.isLiving(attacker) && condition.hasTag(caster, "spectrum_manuscript_true") == false) {
+        mechanic.damage(attacker, 5)
+        mechanic.particles.circle(caster.position, WITCH, 1.0, 16)
+    }
+}

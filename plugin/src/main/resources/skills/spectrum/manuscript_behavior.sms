@@ -1,0 +1,16 @@
+skill manuscript_behavior {
+    group = "behavior"
+    concurrency = "reject"
+    let target = targeter.threat.top()
+    if (condition.isLiving(target)) {
+        if (condition.distanceBelow(caster, target, 6)) {
+            skills.cast("spectrum:manuscript_paragraph_rebuild", caster, target, linked = false, ignoreRejected = true)
+        }
+        if (random.chance(8%)) {
+            skills.cast("spectrum:manuscript_seeking_glyph", caster, target, linked = false, ignoreRejected = true)
+        }
+        if (phase == "finale" && random.chance(4%)) {
+            skills.cast("spectrum:manuscript_false_manuscript", caster, target, linked = false, ignoreRejected = true)
+        }
+    }
+}

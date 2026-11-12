@@ -1,0 +1,17 @@
+skill manuscript_glyph_beam {
+    cooldown = 8s
+    group = "major"
+    concurrency = "reject"
+    requires condition.isLiving(target) && (phase == "correction" || phase == "rewrite")
+    let from = caster.position
+    let to = target.position
+    repeat 24 {
+        mechanic.particles.line(from, to, ELECTRIC_SPARK, 0.45)
+        wait 1t
+    }
+    repeat 30 {
+        mechanic.particles.line(from, to, END_ROD, 0.6)
+        mechanic.ray.damage(from, to, 10, 0.8)
+        wait 1t
+    }
+}

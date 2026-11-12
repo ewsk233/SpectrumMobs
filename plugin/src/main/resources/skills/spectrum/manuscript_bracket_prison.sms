@@ -1,0 +1,18 @@
+skill manuscript_bracket_prison {
+    cooldown = 15s
+    group = "control"
+    concurrency = "reject"
+    requires (phase == "rewrite" || phase == "finale") && condition.isLiving(target)
+    let center = target.position
+    repeat 100 {
+        mechanic.particles.circle(center, SOUL, 2.5, 32)
+        if (condition.isLiving(target)) {
+            mechanic.entity.pull(target, center, 0.08)
+        }
+        wait 1t
+    }
+    for player in targeter.players.within(center, 2.5) {
+        mechanic.damage(player, 22)
+        mechanic.entity.push(player, center, 0.7)
+    }
+}

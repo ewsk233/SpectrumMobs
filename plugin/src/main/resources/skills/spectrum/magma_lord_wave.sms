@@ -1,0 +1,18 @@
+skill magma_lord_wave {
+    group = "main"
+    concurrency = "reject"
+    let center = caster.position
+    mechanic.particles.circle(at = center, particle = FLAME, radius = 7, count = 64)
+    mechanic.particles.circle(at = center, particle = SOUL, radius = 4, count = 32)
+    for player in targeter.players.within(center, 12) {
+        mechanic.actionbar.show(player, "&6熔岩喷发即将爆发，立刻远离！")
+        mechanic.sound.play(player, "block.lava.pop", 1, 0.6)
+    }
+    wait 20t
+    for player in targeter.players.within(center, 7) {
+        mechanic.damage(player, 14)
+        mechanic.ignite(player, 4s)
+        mechanic.entity.velocity(player, 0, 0.8, 0)
+        mechanic.message.send(player, "&c你被熔岩喷发击中了！")
+    }
+}

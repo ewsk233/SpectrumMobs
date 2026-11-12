@@ -1,0 +1,8 @@
+skill manuscript_phase_rewrite {
+    group = "phase"
+    concurrency = "replace"
+    for player in targeter.players.within(caster.position, 40) {
+        mechanic.title.show(player, "&d现实重写", "&5文字碑正在连接缄言", 5t, 60t, 10t)
+    }
+    mechanic.particles.circle(caster.position, PORTAL, 8, 96)
+}

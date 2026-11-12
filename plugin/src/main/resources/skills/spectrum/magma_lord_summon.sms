@@ -1,0 +1,15 @@
+skill magma_lord_summon {
+    group = "main"
+    concurrency = "reject"
+    let center = caster.position
+    mechanic.particles.circle(at = center, particle = FLAME, radius = 3, count = 40)
+    for player in targeter.players.within(center, 16) {
+        mechanic.title.show(player, "&6熔岩裂隙", "&c熔岩仆从正在涌出", 5t, 30t, 5t)
+        mechanic.sound.play(player, "block.lava.pop", 1, 0.8)
+    }
+    let summoned = mechanic.mob.summon(id = "spectrum:magma_minion", at = center, count = 2)
+    state.increment("summons", summoned)
+    for player in targeter.players.within(center, 16) {
+        mechanic.actionbar.show(player, "&c熔核君王召唤了 ${summoned} 个熔岩仆从！")
+    }
+}

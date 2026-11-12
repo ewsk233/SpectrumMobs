@@ -1,0 +1,35 @@
+schema-version: 1
+id: spectrum:manuscript_echo
+type: VEX
+
+display:
+  name: "&5遗文分身"
+  name-visible: false
+
+attributes:
+  max-health: 120.0
+  attack-damage: 8.0
+  movement-speed: 0.3
+  knockback-resistance: 1.0
+
+model:
+  provider: display
+  id: orbit
+  options:
+    glyphs: "&5✦|&d✧|&b❖"
+    count: "12"
+    radius: "1.5"
+    height: "1.0"
+    rotation: "-0.035"
+    rotation-tag: "spectrum_manuscript_true"
+    core: "&5◆"
+    particle: "PORTAL"
+    particle-every: "4"
+
+events:
+  damaged:
+    - spectrum:manuscript_echo_hit
+
+damage-rules:
+  incoming: spectrum:manuscript_rules.echo_incoming
+

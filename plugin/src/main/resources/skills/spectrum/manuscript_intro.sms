@@ -1,0 +1,9 @@
+skill manuscript_intro {
+    group = "feedback"
+    concurrency = "reject"
+    for player in targeter.players.within(caster.position, 32) {
+        mechanic.title.show(player, "&5遗文聚合体", "&b万物皆有其名……", 5t, 50t, 10t)
+        mechanic.message.send(player, "&8[&5缄言&8] &d文字开始重组。")
+    }
+    mechanic.particles.circle(caster.position, PORTAL, 3, 48)
+}

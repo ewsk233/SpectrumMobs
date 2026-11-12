@@ -1,0 +1,5 @@
+skill manuscript_core_death {
+    group = "feedback"
+    concurrency = "reject"
+    mechanic.particles.circle(caster.position, SOUL_FIRE_FLAME, 1.5, 24)
+}

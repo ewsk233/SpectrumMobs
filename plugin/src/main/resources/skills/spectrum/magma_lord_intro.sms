@@ -1,0 +1,11 @@
+skill magma_lord_intro {
+    group = "intro"
+    concurrency = "replace"
+    let center = caster.position
+    mechanic.particles.circle(at = center, particle = FLAME, radius = 2.5, count = 36)
+    for player in targeter.players.within(center, 18) {
+        mechanic.title.show(player, "&4熔核君王", "&c火山的心脏已经苏醒", 10t, 50t, 10t)
+        mechanic.message.send(player, "&c熔核君王：&6你们将成为熔岩的一部分。")
+        mechanic.sound.play(player, "entity.wither.spawn", 1, 0.7)
+    }
+}

@@ -1,0 +1,11 @@
+skill boss_warning {
+    requires event.name == "phase_enter"
+
+    let line = "&e阶段：${phase}，伤害：${event.damage}"
+    for player in targeter.players.within(caster.position, 12) {
+        mechanic.message.send(player, "&c熔火守卫进入狂暴阶段！")
+        mechanic.title.show(player, "&4熔火守卫", "&c狂暴阶段", 5t, 40t, 10t)
+        mechanic.actionbar.show(player, line)
+        mechanic.sound.play(player, "entity.blaze.shoot", 1, 1)
+    }
+}

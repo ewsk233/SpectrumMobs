@@ -1,0 +1,5 @@
+skill manuscript_fragment_death {
+    group = "feedback"
+    concurrency = "reject"
+    mechanic.particles.circle(caster.position, END_ROD, 1.5, 20)
+}

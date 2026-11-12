@@ -1,0 +1,5 @@
+skill manuscript_pillar_death {
+    group = "feedback"
+    concurrency = "reject"
+    mechanic.particles.circle(caster.position, WITCH, 1.5, 20)
+}

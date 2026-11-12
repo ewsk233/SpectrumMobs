@@ -1,0 +1,29 @@
+fn select_threat(candidates: List<Entity>): Entity {
+    for candidate in candidates {
+        if (condition.isPlayer(candidate)) {
+            return candidate
+        }
+    }
+    return target
+}
+
+fn incoming(amount: Number, cause: String): Number {
+    if (condition.eventCause("LAVA")) {
+        return 0.5
+    }
+    return 1
+}
+
+fn outgoing(amount: Number, cause: String): Number {
+    if (condition.eventCause("ENTITY_ATTACK")) {
+        return 1.1
+    }
+    return 1
+}
+
+fn drop_multiplier(amount: Number, chance: Number): Number {
+    if (condition.isPlayer(target)) {
+        return 1.25
+    }
+    return 1
+}

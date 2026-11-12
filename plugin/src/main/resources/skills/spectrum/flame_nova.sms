@@ -1,0 +1,15 @@
+skill flame_nova(radius: Number = 5, damage: Number = 12, windup: Duration = 30t) {
+    group = "main"
+    concurrency = "reject"
+    cooldown = 8s
+    requires caster.health.percent <= 50% && radius > 0 && damage >= 0
+
+    let center = caster.position
+    mechanic.particles.circle(at = center, particle = FLAME, radius = radius, count = 48)
+    wait windup
+
+    for player in targeter.players.within(center, radius) {
+        mechanic.damage(player, damage)
+        mechanic.ignite(player, 3s)
+    }
+}

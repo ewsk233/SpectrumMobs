@@ -1,0 +1,8 @@
+skill magma_lord_behavior {
+    group = "behavior"
+    concurrency = "reject"
+    let victim = targeter.threat.top()
+    if (condition.isLiving(victim) && condition.distanceBelow(caster, victim, 24)) {
+        skills.cast("spectrum:magma_lord_bolt", caster, victim, linked = false)
+    }
+}

@@ -1,0 +1,28 @@
+skill blue_flame_ring {
+    group = "main"
+    concurrency = "reject"
+    cooldown = 10s
+
+    let targets = targeter.players.within(caster.position, 12)
+
+    for player in targets {
+        let center = player.position
+        mechanic.particles.circle(at = center, particle = SOUL, radius = 3, count = 36)
+    }
+
+    wait 60t
+
+    for player in targets {
+        let center = player.position
+        mechanic.particles.circle(at = center, particle = FLAME, radius = 3, count = 36)
+
+        let victims = targeter.players.within(center, 3)
+        for victim in victims {
+            mechanic.damage(victim, 12)
+        }
+
+        if (condition.isPlayer(player) && !(player in victims)) {
+            mechanic.message.send(player, "&a你躲过了火焰攻击！")
+        }
+    }
+}

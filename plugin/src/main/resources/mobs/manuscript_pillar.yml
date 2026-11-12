@@ -1,0 +1,29 @@
+schema-version: 1
+id: spectrum:manuscript_pillar
+type: SHULKER
+
+display:
+  name: "&d语法碑"
+  name-visible: true
+
+attributes:
+  max-health: 45.0
+  knockback-resistance: 1.0
+
+model:
+  provider: display
+  id: orbit
+  options:
+    glyphs: "&d▣|&5▣"
+    count: "2"
+    radius: "0.35"
+    height: "0.5"
+    rotation: "0.02"
+    core: "&d▣"
+    particle: "WITCH"
+    particle-every: "5"
+
+events:
+  death:
+    - spectrum:manuscript_pillar_death
+

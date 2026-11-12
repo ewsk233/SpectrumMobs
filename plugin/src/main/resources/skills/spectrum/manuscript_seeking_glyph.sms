@@ -1,0 +1,9 @@
+skill manuscript_seeking_glyph {
+    cooldown = 12s
+    group = "major"
+    concurrency = "reject"
+    let players = targeter.players.within(caster.position, 24)
+    for player in targeter.random(players, 3) {
+        mechanic.projectile.homing(player, "AMETHYST_BLOCK", 0.7, 0.28, 9, 60t, 0.6, false)
+    }
+}

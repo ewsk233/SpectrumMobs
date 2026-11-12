@@ -1,0 +1,16 @@
+skill manuscript_paragraph_rebuild {
+    cooldown = 18s
+    group = "major"
+    concurrency = "reject"
+    let center = caster.position
+    repeat 50 {
+        for player in targeter.players.within(center, 12) {
+            mechanic.entity.pull(player, center, 0.12)
+        }
+        mechanic.particles.circle(center, PORTAL, 6, 40)
+        wait 1t
+    }
+    for player in targeter.players.within(center, 5) {
+        mechanic.damage(player, 16)
+    }
+}

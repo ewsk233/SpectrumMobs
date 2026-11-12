@@ -1,0 +1,134 @@
+schema-version: 1
+id: spectrum:manuscript_silence
+type: VEX
+
+display:
+  name: "&5遗文聚合体 &d· &b缄言"
+  name-visible: true
+
+attributes:
+  max-health: 800.0
+  attack-damage: 18.0
+  movement-speed: 0.32
+  follow-range: 40.0
+  knockback-resistance: 1.0
+
+model:
+  provider: display
+  id: orbit
+  options:
+    glyphs: "&5✦|&d✧|&b❖|&9◇|&6✺|&f⋆|&5◈|&3✹"
+    count: "32"
+    radius: "2.8"
+    height: "1.6"
+    rotation: "0.035"
+    core: "&5◆"
+    particle: "REVERSE_PORTAL"
+    particle-every: "2"
+    billboard: "CENTER"
+    glowing: "true"
+
+movement:
+  controller: hover
+  hover-height: 3.0
+  target-distance: 9.0
+  speed: 0.24
+  update-period: 1t
+
+events:
+  spawn:
+    - spectrum:manuscript_intro
+  attack:
+    - spectrum:manuscript_seeking_glyph
+  death:
+    - spectrum:manuscript_death
+  summon_death:
+    - spectrum:manuscript_echo_destroyed
+
+behavior:
+  skill: spectrum:manuscript_behavior
+  period: 10t
+
+target-rules:
+  threat: spectrum:manuscript_rules.select_threat
+
+damage-rules:
+  incoming: spectrum:manuscript_rules.incoming
+  outgoing: spectrum:manuscript_rules.outgoing
+
+intervals:
+  - id: glyph-beam
+    period: 160t
+    skills:
+      - spectrum:manuscript_glyph_beam
+  - id: period-explosion
+    period: 200t
+    skills:
+      - spectrum:manuscript_period_explosion
+  - id: footnote
+    period: 300t
+    skills:
+      - spectrum:manuscript_footnote
+  - id: syntax-lock
+    period: 420t
+    skills:
+      - spectrum:manuscript_syntax_lock
+  - id: paragraph-rebuild
+    period: 360t
+    skills:
+      - spectrum:manuscript_paragraph_rebuild
+  - id: bracket-prison
+    period: 280t
+    skills:
+      - spectrum:manuscript_bracket_prison
+  - id: false-manuscript
+    period: 560t
+    skills:
+      - spectrum:manuscript_false_manuscript
+  - id: final-chapter
+    period: 520t
+    skills:
+      - spectrum:manuscript_final_chapter
+
+boss:
+  enabled: true
+  phases:
+    - id: correction
+      health-threshold: 1.0
+      display-name: "&5遗文聚合体 &d· &b缄言"
+      bossbar-title: "&5遗文聚合体 · 缄言"
+    - id: rewrite
+      health-threshold: 0.7
+      display-name: "&5遗文聚合体 &d· &e现实重写"
+      bossbar-title: "&d遗文聚合体 · 现实重写"
+      on-enter:
+        - spectrum:manuscript_phase_rewrite
+    - id: finale
+      health-threshold: 0.35
+      display-name: "&4遗文聚合体 &c· &5终焉篇章"
+      bossbar-title: "&4遗文聚合体 · 终焉篇章"
+      on-enter:
+        - spectrum:manuscript_phase_finale
+
+bossbar:
+  enabled: true
+  title: "&5遗文聚合体 · 缄言"
+  color: PURPLE
+  style: SEGMENTED_10
+  range: 48
+  update-interval: 1t
+
+summons:
+  max-active: 24
+  cleanup-on-death: true
+
+drops:
+  - material: AMETHYST_SHARD
+    amount: 8
+    chance: 1.0
+  - material: ECHO_SHARD
+    amount: 1
+    chance: 0.35
+  - material: ENCHANTED_BOOK
+    amount: 1
+    chance: 0.2

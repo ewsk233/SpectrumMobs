@@ -1,0 +1,30 @@
+skill manuscript_final_chapter {
+    cooldown = 40s
+    group = "ultimate"
+    concurrency = "reject"
+    requires phase == "finale"
+    let existing = targeter.entities.tagged(caster.position, 24, "spectrum_manuscript_core")
+    if (existing.isEmpty) {
+        mechanic.mob.summon(id = "spectrum:manuscript_core", at = caster.position, count = 3, tag = "spectrum_manuscript_core", ignoreRejected = true)
+        for player in targeter.players.within(caster.position, 40) {
+            mechanic.title.show(player, "&4终章", "&c摧毁句核碎片，否则文字风暴将降临", 5t, 100t, 10t)
+        }
+        repeat 100 {
+            mechanic.particles.circle(caster.position, ENCHANT, 6, 48)
+            wait 1t
+        }
+        if (targeter.entities.tagged(caster.position, 24, "spectrum_manuscript_core").isEmpty) {
+            mechanic.entity.addTag(caster, "spectrum_manuscript_vulnerable")
+            for player in targeter.players.within(caster.position, 40) {
+                mechanic.message.send(player, "&a缄言的核心暴露了！")
+            }
+            wait 5s
+            mechanic.entity.removeTag(caster, "spectrum_manuscript_vulnerable")
+        } else {
+            for player in targeter.players.within(caster.position, 40) {
+                mechanic.damage(player, 28)
+                mechanic.entity.push(player, caster.position, 1.0)
+            }
+        }
+    }
+}

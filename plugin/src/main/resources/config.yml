@@ -1,0 +1,33 @@
+config-version: 1
+
+general:
+  language: zh_CN
+  debug: false
+
+engine:
+  max-steps-per-resume: 256
+  max-active-executions: 2048
+  max-query-targets: 64
+  max-active-projectiles: 2048
+  max-call-depth: 16
+  max-loop-iterations: 1000
+  max-state-entries: 128
+  cancel-on-caster-death: true
+  cancel-on-caster-despawn: true
+  cancel-on-world-unload: true
+
+commands:
+  allow-raw: false
+  max-raw-length: 256
+  definitions: {}
+
+compiler:
+  strict-mode: true
+  validate-on-startup: true
+  async-compilation: true
+  atomic-reload: true
+
+debug:
+  trace-skills: false
+  show-compile-errors: true
+  collect-performance-metrics: false

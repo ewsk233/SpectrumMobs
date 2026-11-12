@@ -1,0 +1,96 @@
+schema-version: 1
+id: spectrum:magma_lord
+type: WITHER_SKELETON
+
+display:
+  name: "&4熔核君王"
+  name-visible: true
+
+attributes:
+  max-health: 500.0
+  attack-damage: 14.0
+  movement-speed: 0.28
+  follow-range: 32.0
+  knockback-resistance: 0.8
+
+equipment:
+  main-hand:
+    material: NETHERITE_SWORD
+    drop-chance: 0.0
+
+events:
+  spawn:
+    - spectrum:magma_lord_intro
+  attack:
+    - spectrum:magma_lord_bolt
+  damaged:
+    - spectrum:magma_lord_rebuke
+
+behavior:
+  skill: spectrum:magma_lord_behavior
+  period: 10t
+
+target-rules:
+  threat: spectrum:combat.select_threat
+
+damage-rules:
+  incoming: spectrum:combat.incoming
+  outgoing: spectrum:combat.outgoing
+
+intervals:
+  - id: eruption
+    period: 120t
+    skills:
+      - spectrum:magma_lord_wave
+  - id: reinforcements
+    period: 240t
+    skills:
+      - spectrum:magma_lord_summon
+
+boss:
+  enabled: true
+  phases:
+    - id: normal
+      health-threshold: 1.0
+    - id: heated
+      health-threshold: 0.7
+      display-name: "&6熔核君王 &e[炽热]"
+      bossbar-title: "&6熔核君王 [炽热]"
+      attributes:
+        attack-damage: 18.0
+        movement-speed: 0.30
+      on-enter:
+        - spectrum:magma_lord_phase_heated
+    - id: overheated
+      health-threshold: 0.4
+      display-name: "&c熔核君王 &4[过热]"
+      bossbar-title: "&4熔核君王 [过热]"
+      attributes:
+        attack-damage: 24.0
+        movement-speed: 0.34
+      on-enter:
+        - spectrum:magma_lord_phase_overheated
+
+bossbar:
+  enabled: true
+  title: "&4熔核君王"
+  color: RED
+  style: SOLID
+  range: 24
+  update-interval: 1t
+
+summons:
+  max-active: 6
+  cleanup-on-death: true
+
+drops:
+  - material: NETHERITE_SCRAP
+    amount: 1
+    chance: 0.35
+  - material: BLAZE_ROD
+    amount: 2
+    chance: 0.75
+  - material: MAGMA_CREAM
+    amount: 4
+    chance: 1.0
+    rule: spectrum:combat.drop_multiplier

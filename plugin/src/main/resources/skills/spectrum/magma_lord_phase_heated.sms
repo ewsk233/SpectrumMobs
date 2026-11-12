@@ -1,0 +1,13 @@
+skill magma_lord_phase_heated {
+    group = "phase"
+    concurrency = "replace"
+    mechanic.entity.potion(caster, "FIRE_RESISTANCE", 160t, 0)
+    let center = caster.position
+    mechanic.particles.circle(at = center, particle = FLAME, radius = 4, count = 48)
+    let summoned = mechanic.mob.summon(id = "spectrum:magma_minion", at = center, count = 2)
+    for player in targeter.players.within(center, 18) {
+        mechanic.title.show(player, "&6阶段转换", "&e熔核君王进入炽热阶段", 5t, 35t, 8t)
+        mechanic.message.send(player, "&e熔核君王的攻击变得更加迅猛！")
+        mechanic.actionbar.show(player, "&c新增仆从：${summoned}")
+    }
+}

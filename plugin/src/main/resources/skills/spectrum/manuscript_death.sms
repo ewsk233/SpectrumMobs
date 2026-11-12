@@ -1,0 +1,8 @@
+skill manuscript_death {
+    group = "feedback"
+    concurrency = "reject"
+    for player in targeter.players.within(caster.position, 40) {
+        mechanic.title.show(player, "&5缄言终止", "&7未命名之物归于寂静", 5t, 60t, 10t)
+    }
+    mechanic.particles.circle(caster.position, END_ROD, 6, 96)
+}
