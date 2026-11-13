@@ -23,6 +23,7 @@ SpectrumMobs 是一个基于 Kotlin 与 TabooLib 的 Minecraft 怪物与技能�
 - [参数化技能与规则模块](docs/PARAMETER_RULE_SPEC.md)
 - [威胁表、行为策略与规则计算器](docs/THREAT_BEHAVIOR_SPEC.md)
 - [遗文聚合体·缄言](docs/GLYPH_BOSS_SPEC.md)
+- [召唤结果、批次归属与临时资源](docs/SUMMON_LIFECYCLE_SPEC.md)
 - [实现计划](docs/IMPLEMENTATION_PLAN.md)
 - [设计决策](docs/DECISIONS.md)
 - [协作约定](AGENTS.md)
@@ -66,7 +67,9 @@ Linux 或 macOS：
 
 技能 API 已统一为 `targeter.*`、`condition.*`、`mechanic.*`，使用同一份签名和运行时绑定快照。内置技能已迁移；旧顶层动作与条件成员不再支持。已有服务器的 `.sms` 文件需要按 [脚本 API](docs/SCRIPT_API.md) 更新。
 
-施法组和 `parallel/reject/replace` 策略在 `.sms` 中声明。阶段切换、手动打断和父子技能取消会按策略清理实例所属的投射物与临时血条。`skills.cast(id, caster, target, linked?)` 显式传入目标，返回执行 UUID；子技能共用调用链深度限制。完整规则见 [施法管理与打断](docs/CASTING_SPEC.md)。
+施法组和 `parallel/reject/replace` 策略在 `.sms` 中声明。阶段切换、手动打断和父子技能取消会按策略清理实例所属的投射物、临时血条、召唤批次和临时标签。`mechanic.skills.cast(id, caster, target, linked?, ignoreRejected?)` 显式传入目标并返回结构化结果，执行 UUID 位于 `result.id`；子技能共用调用链深度限制。完整规则见 [施法管理与打断](docs/CASTING_SPEC.md)。
+
+召唤操作同样返回结构化结果，通过 `result.success` 检查完整生成；`targeter.summons` 按主人和批次查询，`condition.summons.defeated` 区分真实死亡与程序清理。已有服务器应按照 [迁移步骤](docs/SUMMON_LIFECYCLE_SPEC.md) 更新自定义脚本和缄言示例。
 
 技能支持带类型和默认值的参数，事件、周期触发、子技能和 `/spectrummobs skill cast` 都可以传入参数。`.sms` 还支持显式导入的只读 `fn` 规则模块；规则不能等待、执行 Mechanics、写状态或启动子技能。完整规则见 [参数化技能与规则模块](docs/PARAMETER_RULE_SPEC.md)。
 

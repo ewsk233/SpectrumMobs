@@ -26,7 +26,7 @@ class ChildSkillIntegrationTest {
             directory.resolve("parent.sms").writeText("""
                 skill parent {
                     let secret = 1
-                    let child = skills.cast("spectrum:child", caster, target)
+                    let child = mechanic.skills.cast("spectrum:child", caster, target)
                     wait 30t
                 }
             """.trimIndent())
@@ -35,7 +35,7 @@ class ChildSkillIntegrationTest {
             var seenParent: UUID? = null
             var cleaned = 0
             val runtime = SkillRuntimeService(SkillFileRepository(directory), projectileService = ProjectileService(),
-                summonMob = { _, _, _ -> false }, extendApi = {
+                summonMob = { org.ewsk.spectrummobs.mob.MobSpawnResult.Failed("Summoning disabled", org.ewsk.spectrummobs.core.OperationCode.CAPACITY) }, extendApi = {
                     register("mechanic.test.capture", emptyList(), ScriptType.Unit) { context, _ ->
                         seenTarget = (context.target as RuntimeValue.EntityValue).id
                         seenParent = context.parentExecutionId

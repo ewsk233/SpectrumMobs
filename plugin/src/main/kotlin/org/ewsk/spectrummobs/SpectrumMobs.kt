@@ -94,6 +94,7 @@ object SpectrumMobs : Plugin() {
         mobThreats = MobThreatService()
         mobMovement = MobMovementService(mobConfigs) { owner -> mobThreats.top(owner) }
         visuals = DisplayVisualService()
+        visuals.cleanupOrphans(org.bukkit.Bukkit.getWorlds().flatMap { it.entities })
         MobIntegrationRegistry.register(visuals)
         skillRuntime = SkillRuntimeService(
             SkillFileRepository(File(dataFolder, "skills")),
@@ -102,11 +103,8 @@ object SpectrumMobs : Plugin() {
             commandPolicy = commandPolicy,
             traceSkills = debugPolicy.traceSkills,
             projectileService = projectiles,
-            summonMob = { owner, id, location ->
-                mobService.summon(owner, id, location) is MobSpawnResult.Spawned
-            },
-            summonMobEntity = { owner, id, location ->
-                (mobService.summon(owner, id, location) as? MobSpawnResult.Spawned)?.entity
+            summonMob = { request ->
+                mobService.summon(request.owner, request.id, request.location, request.batchId, request.executionId, request.tag)
             },
             threatTop = ::selectThreatTarget,
             threatList = { owner -> mobThreats.entries(owner).map { it.first } },
@@ -148,6 +146,7 @@ object SpectrumMobs : Plugin() {
                 result.diagnostics.forEach(SpectrumMobsI18n::logConfigurationDiagnostic)
             }
         }
+        org.bukkit.Bukkit.getWorlds().flatMap { it.entities }.forEach(skillRuntime.summons::cleanupOrphan)
         mobIntervals.registerLoaded(runtimeTick)
         mobBossBars.registerLoaded(runtimeTick)
         mobMovement.registerLoaded()

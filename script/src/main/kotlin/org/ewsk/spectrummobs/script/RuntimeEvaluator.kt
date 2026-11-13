@@ -68,6 +68,15 @@ class RuntimeEvaluator {
                 "isEmpty" -> RuntimeValue.BooleanValue(receiver.values.isEmpty())
                 else -> throw RuntimeEvaluationException("List has no member '$name'")
             }
+            is RuntimeValue.OperationResultValue -> when (name) {
+                "success" -> RuntimeValue.BooleanValue(receiver.success)
+                "id" -> RuntimeValue.TextValue(receiver.id)
+                "code" -> RuntimeValue.TextValue(receiver.code.key)
+                "reason" -> RuntimeValue.TextValue(receiver.reason)
+                "count" -> RuntimeValue.NumberValue(receiver.count.toDouble())
+                "requested" -> RuntimeValue.NumberValue(receiver.requested.toDouble())
+                else -> throw RuntimeEvaluationException("OperationResult has no member '$name'")
+            }
             is RuntimeValue.ServiceValue -> RuntimeValue.FunctionValue("${receiver.name}.$name")
             else -> throw RuntimeEvaluationException("Runtime value has no member '$name'")
         }
@@ -235,6 +244,7 @@ class RuntimeEvaluator {
         is RuntimeValue.ParticleValue -> value.name
         is RuntimeValue.HealthValue -> "${value.current}/${value.max}"
         is RuntimeValue.EventValue -> value.name
+        is RuntimeValue.OperationResultValue -> "${value.code.key}:${value.id}"
         is RuntimeValue.ListValue -> value.values.joinToString(",") { format(it) }
         is RuntimeValue.ServiceValue -> value.name
         is RuntimeValue.FunctionValue -> value.name

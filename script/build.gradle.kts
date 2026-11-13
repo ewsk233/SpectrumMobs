@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     compileOnly(project(":core"))
+    testImplementation(project(":core"))
     testImplementation(kotlin("test"))
 }
 

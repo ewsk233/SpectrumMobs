@@ -43,11 +43,13 @@ import kotlin.math.sin
 import java.util.concurrent.ThreadLocalRandom
 import java.util.UUID
 import org.ewsk.spectrummobs.core.ResourceId
+import org.ewsk.spectrummobs.core.OperationCode
+import org.ewsk.spectrummobs.mob.MobSpawnResult
 
 sealed interface SkillCastResult {
     data class Started(val executionId: String) : SkillCastResult
     data class Missing(val id: String) : SkillCastResult
-    data class Rejected(val reason: String) : SkillCastResult
+    data class Rejected(val reason: String, val code: OperationCode = OperationCode.START_FAILED) : SkillCastResult
 }
 
 data class RuntimeLifecyclePolicy(
@@ -63,8 +65,7 @@ class SkillRuntimeService(
     commandPolicy: CommandPolicy = CommandPolicy(),
     private val traceSkills: Boolean = false,
     private val projectileService: ProjectileService,
-    private val summonMob: (Entity, String, Location) -> Boolean,
-    private val summonMobEntity: ((Entity, String, Location) -> Entity?)? = null,
+    summonMob: (SummonRequest) -> MobSpawnResult,
     private val threatTop: (Entity) -> Entity? = { null },
     private val threatList: (Entity) -> List<Entity> = { emptyList() },
     private val threatAmount: (Entity, Entity) -> Double = { _, _ -> 0.0 },
@@ -85,6 +86,8 @@ class SkillRuntimeService(
     private val scheduler = SkillScheduler(limits)
     private val commandDispatcher = CommandDispatcher(commandPolicy)
     private val bossbars = linkedMapOf<BossBarKey, ActiveBossBar>()
+    val summons = SummonService(summonMob)
+    private val temporaryTags = TemporaryTagService()
     @Volatile
     var scriptApi: ScriptApiBindings = createActions()
         private set
@@ -127,13 +130,24 @@ class SkillRuntimeService(
             linkedToParent = linkedToParent
         )) {
             is SkillStartResult.Started -> SkillCastResult.Started(result.execution.id.toString())
-            is SkillStartResult.Rejected -> SkillCastResult.Rejected(result.reason)
+            is SkillStartResult.Rejected -> SkillCastResult.Rejected(result.reason, result.code)
         }
         traceCast(id, caster, result)
         return result
     }
 
     fun tick(tick: Long): List<RuntimeEvent> {
+        // 事件之外再按已持有的实体引用兜底，兼容缺少移除事件的平台。
+        scheduler.casterReferences().forEach { value ->
+            val entity = value.origin as? Entity ?: return@forEach
+            if (entity.isDead && lifecyclePolicy.cancelOnCasterDeath) {
+                cancelByCaster(entity, "Caster died")
+            } else if (!entity.isValid && lifecyclePolicy.cancelOnCasterDespawn) {
+                cancelByCaster(entity, "Caster removed from the world")
+            }
+        }
+        summons.tick(tick)
+        temporaryTags.tick(tick)
         val events = scheduler.tick(tick)
         cleanupBossbars(tick)
         if (traceSkills) {
@@ -331,7 +345,7 @@ class SkillRuntimeService(
         val outcome = when (result) {
             is SkillCastResult.Started -> "started:${result.executionId}"
             is SkillCastResult.Missing -> "missing"
-            is SkillCastResult.Rejected -> "rejected:${result.reason}"
+            is SkillCastResult.Rejected -> "rejected:${result.code.key}:${result.reason}"
         }
         SpectrumMobsI18n.log("debug-skill-cast", id, caster.uniqueId, outcome)
     }
@@ -344,6 +358,20 @@ class SkillRuntimeService(
             (nearbyEntities(context, arguments, excludeCaster = true) as RuntimeValue.ListValue).values.firstOrNull() ?: RuntimeValue.NullValue
         }
         .bind("targeter.entities.tagged") { context, arguments -> nearbyTaggedEntities(context, arguments) }
+        .bind("targeter.summons") { _, arguments ->
+            val owner = argument(arguments, "owner", 0).asEntity()
+            val batch = optionalArgument(arguments, "batch", 1)?.let {
+                it as? RuntimeValue.OperationResultValue ?: throw IllegalArgumentException("Summon batch must be OperationResult")
+            }
+            val tag = optionalArgument(arguments, "tag", 2)?.asText()
+            RuntimeValue.ListValue(summons.targets(owner, batch, tag).map(::toRuntimeEntity))
+        }
+        .bind("condition.summons.defeated") { _, arguments ->
+            RuntimeValue.BooleanValue(summons.defeated(
+                argument(arguments, "owner", 0).asEntity(),
+                argument(arguments, "batch", 1) as RuntimeValue.OperationResultValue
+            ))
+        }
         .bind("targeter.threat.top") { context, _ ->
             val owner = (context.caster as? RuntimeValue.EntityValue)?.origin as? Entity
             owner?.let(threatTop)?.let(::toRuntimeEntity) ?: RuntimeValue.NullValue
@@ -432,30 +460,30 @@ class SkillRuntimeService(
                 ?: throw IllegalArgumentException("Summon caster is not a valid entity")
             val id = argument(arguments, "id", 0).asText()
             val center = argument(arguments, "at", 1).asPosition()
-            val count = (optionalArgument(arguments, "count", 2)?.asNumber()?.toInt() ?: 1).coerceIn(1, 16)
+            val count = optionalArgument(arguments, "count", 2)?.asNumber() ?: 1.0
+            require(count.isFinite() && count in 1.0..64.0 && count == count.toInt().toDouble()) {
+                "Summon count must be an integer between 1 and 64"
+            }
             val tag = optionalArgument(arguments, "tag", 3)?.asText()?.trim()?.takeIf { it.isNotEmpty() }
             val ignoreRejected = optionalArgument(arguments, "ignoreRejected", 4)?.asBoolean() ?: false
             val world = center.world?.let(Bukkit::getWorld)
                 ?: throw IllegalStateException("World not found: ${center.world}")
-            var spawned = 0
-            repeat(count) { index ->
-                val angle = if (count == 1) 0.0 else Math.PI * 2.0 * index / count
-                val location = Location(
-                    world,
-                    center.x + cos(angle) * 1.5,
-                    center.y,
-                    center.z + sin(angle) * 1.5
-                )
-                val summoned = summonMobEntity?.invoke(owner, id, location)
-                if (summoned != null) {
-                    tag?.let(summoned::addScoreboardTag)
-                    spawned++
-                } else if (summonMob(owner, id, location)) {
-                    spawned++
-                }
+            val result = summons.summon(context, owner, id, Location(world, center.x, center.y, center.z),
+                count.toInt(), tag, optionalArgument(arguments, "lifetime", 5)?.asDurationTicks() ?: 0L)
+            if (traceSkills) {
+                SpectrumMobsI18n.log("debug-summon-result", context.executionId, result.id, id,
+                    result.code.key, result.count, result.requested, result.reason)
             }
-            if (spawned == 0 && !ignoreRejected) throw IllegalArgumentException("Unable to summon mob: $id")
-            RuntimeValue.NumberValue(spawned.toDouble())
+            if (!result.success && !(ignoreRejected && result.code.expectedRejection)) {
+                summons.cleanup(owner, result)
+                throw IllegalArgumentException("Unable to summon mob $id [${result.code.key}]: ${result.reason}")
+            }
+            result
+        }
+        .bind("mechanic.mob.cleanup") { _, arguments ->
+            summons.cleanup(argument(arguments, "owner", 0).asEntity(),
+                argument(arguments, "batch", 1) as RuntimeValue.OperationResultValue)
+            RuntimeValue.UnitValue
         }
         .bind("mechanic.threat.add") { context, arguments ->
             val owner = (context.caster as? RuntimeValue.EntityValue)?.origin as? Entity
@@ -594,15 +622,23 @@ class SkillRuntimeService(
             RuntimeValue.UnitValue
         }
         .bind("mechanic.entity.remove") { _, arguments ->
-            argument(arguments, "entity", 0).asEntity().remove()
+            val entity = argument(arguments, "entity", 0).asEntity()
+            summons.onRemoved(entity)
+            MobIdentity.markSummonCleanup(entity)
+            entity.remove()
             RuntimeValue.UnitValue
         }
         .bind("mechanic.entity.addTag") { _, arguments ->
-            argument(arguments, "entity", 0).asEntity().addScoreboardTag(argument(arguments, "tag", 1).asText())
+            temporaryTags.addPermanent(argument(arguments, "entity", 0).asEntity(), argument(arguments, "tag", 1).asText())
             RuntimeValue.UnitValue
         }
         .bind("mechanic.entity.removeTag") { _, arguments ->
-            argument(arguments, "entity", 0).asEntity().removeScoreboardTag(argument(arguments, "tag", 1).asText())
+            temporaryTags.remove(argument(arguments, "entity", 0).asEntity(), argument(arguments, "tag", 1).asText())
+            RuntimeValue.UnitValue
+        }
+        .bind("mechanic.entity.temporaryTag") { context, arguments ->
+            temporaryTags.add(argument(arguments, "entity", 0).asEntity(), argument(arguments, "tag", 1).asText(),
+                argument(arguments, "duration", 2).asDurationTicks(), context)
             RuntimeValue.UnitValue
         }
         .bind("mechanic.entity.pull") { _, arguments ->
@@ -738,7 +774,7 @@ class SkillRuntimeService(
             context.setStateValue(key, RuntimeValue.NumberValue(value))
             RuntimeValue.NumberValue(value)
         }
-        .bind("skills.cast") { context, arguments ->
+        .bind("mechanic.skills.cast") { context, arguments ->
             val id = argument(arguments, "id", 0).asText()
             val caster = argument(arguments, "caster", 1).asEntity()
             val target = argument(arguments, "target", 2).asEntity()
@@ -753,9 +789,11 @@ class SkillRuntimeService(
                 "interval" to (context.variables["interval"] ?: RuntimeValue.TextValue("default"))
             )
             when (val result = cast(id, caster, inherited, skillArguments, parent = context, linkedToParent = linked)) {
-                is SkillCastResult.Started -> RuntimeValue.TextValue(result.executionId)
-                is SkillCastResult.Missing -> throw IllegalArgumentException("Skill not found: ${result.id}")
-                is SkillCastResult.Rejected -> if (ignoreRejected) RuntimeValue.TextValue("") else throw IllegalArgumentException("Skill $id was rejected: ${result.reason}")
+                is SkillCastResult.Started -> RuntimeValue.OperationResultValue(result.executionId, 1, 1)
+                is SkillCastResult.Missing -> throw IllegalArgumentException("Skill not found [missing_definition]: ${result.id}")
+                is SkillCastResult.Rejected -> if (ignoreRejected && result.code.expectedRejection) {
+                    RuntimeValue.OperationResultValue("", 0, 1, result.code, result.reason)
+                } else throw IllegalArgumentException("Skill $id was rejected [${result.code.key}]: ${result.reason}")
             }
         }
         .bind("command.raw") { _, arguments ->
@@ -902,7 +940,7 @@ class SkillRuntimeService(
         }
 
     private fun RuntimeValue.asParticle(): Particle =
-        Particle.valueOf((this as? RuntimeValue.ParticleValue)?.name?.uppercase() ?: "")
+        ParticleAdapter.resolve((this as? RuntimeValue.ParticleValue)?.name ?: "")
 
     private fun RuntimeValue.asDurationTicks(): Long =
         (this as? RuntimeValue.DurationValue)?.ticks

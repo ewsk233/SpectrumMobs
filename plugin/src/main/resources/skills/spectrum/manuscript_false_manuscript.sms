@@ -3,18 +3,19 @@ skill manuscript_false_manuscript {
     group = "major"
     concurrency = "reject"
     requires phase == "finale"
-    mechanic.entity.addTag(caster, "spectrum_manuscript_finale")
-    mechanic.mob.summon(id = "spectrum:manuscript_echo", at = caster.position, count = 3, tag = "spectrum_manuscript_echo", ignoreRejected = true)
-    let clones = targeter.entities.tagged(caster.position, 24, "spectrum_manuscript_echo")
-    for real in targeter.random(clones, 1) {
-        mechanic.entity.addTag(real, "spectrum_manuscript_true")
+    let batch = mechanic.mob.summon(id = "spectrum:manuscript_echo", at = caster.position, count = 3, tag = "spectrum_manuscript_echo", ignoreRejected = true, lifetime = 9s)
+    if (batch.success) {
+        mechanic.entity.temporaryTag(caster, "spectrum_manuscript_finale", 8s)
+        let clones = targeter.summons(caster, batch)
+        for real in targeter.random(clones, 1) {
+            mechanic.entity.addTag(real, "spectrum_manuscript_true")
+        }
+        for player in targeter.players.within(caster.position, 32) {
+            mechanic.title.show(player, "&5伪本", "&d找出真正的遗文核心", 5t, 50t, 10t)
+        }
+        wait 8s
+        mechanic.mob.cleanup(caster, batch)
+    } else {
+        mechanic.mob.cleanup(caster, batch)
     }
-    for player in targeter.players.within(caster.position, 32) {
-        mechanic.title.show(player, "&5伪本", "&d找出真正的遗文核心", 5t, 50t, 10t)
-    }
-    wait 8s
-    for echo in targeter.entities.tagged(caster.position, 24, "spectrum_manuscript_echo") {
-        mechanic.entity.remove(echo)
-    }
-    mechanic.entity.removeTag(caster, "spectrum_manuscript_finale")
 }

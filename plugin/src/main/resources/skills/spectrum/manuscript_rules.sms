@@ -8,10 +8,10 @@ fn select_threat(candidates: List<Entity>): Entity {
 }
 
 fn incoming(amount: Number, cause: String): Number {
-    if (targeter.entities.tagged(caster.position, 20, "spectrum_manuscript_syntax").isEmpty == false) {
+    if (targeter.summons(caster, tag = "spectrum_manuscript_syntax").isEmpty == false) {
         return 0.2
     }
-    if (targeter.entities.tagged(caster.position, 24, "spectrum_manuscript_fragment").isEmpty == false) {
+    if (targeter.summons(caster, tag = "spectrum_manuscript_fragment").isEmpty == false) {
         return 0.85
     }
     if (condition.hasTag(caster, "spectrum_manuscript_vulnerable")) {

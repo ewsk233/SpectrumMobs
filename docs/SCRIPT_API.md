@@ -10,7 +10,7 @@
 
 旧的顶层查询、动作以及实体条件成员已经删除，没有兼容别名。仓库内置技能已全部迁移；升级已有服务器时，也需要修改服务器 `skills/` 下的 `.sms` 文件。旧写法会产生带文件、行列位置的英文编译诊断，由 TabooLib I18n 输出。错误文件不会阻塞其他合法技能加载。
 
-`random`、`state`、`variables`、`skills`、`command` 是独立的辅助服务，继续使用下文列出的正式名称。
+`random`、`state`、`variables`、`command` 是独立的辅助服务。启动子技能使用 `mechanic.skills.cast`，旧 `skills.cast` 不再注册。
 
 ## Targeter
 
@@ -26,6 +26,7 @@
 | `targeter.threat.top()` | 当前施法者威胁表中的最终目标；可由怪物 YAML 的 `target-rules.threat` 规则重新选择 |
 | `targeter.threat.list()` | 当前施法者威胁表中按威胁降序排列的有效实体列表 |
 | `targeter.random(targets, count)` | 无放回随机选择，保留元素类型；`List<Player>` 仍返回 `List<Player>` |
+| `targeter.summons(owner, batch?, tag?)` | 查询指定主人、可选批次和标签的有效召唤物，不依赖空间公共标签 |
 
 `center` 为 `Position`，`radius` 为有限的非负数字，按实体位置的三维欧氏距离判断，包含范围边界。查询不会主动加载区块。结果先按距离排序，等距时按 UUID 排序，再应用 `engine.max-query-targets`。
 
@@ -47,6 +48,7 @@
 | `condition.threat.above(entity, amount)` | 当前施法者对实体的威胁值是否严格大于给定值 |
 | `condition.threat.isTop(entity)` | 实体是否是当前施法者威胁表最终目标 |
 | `condition.hasTag(entity, tag)` | 实体是否拥有指定 scoreboard tag |
+| `condition.summons.defeated(owner, batch)` | 本批完整生成且全部成员在战斗中死亡；清理、移除或部分生成不算击破 |
 | `condition.all(left, right)` | 两个布尔值同时成立 |
 | `condition.any(left, right)` | 至少一个布尔值成立 |
 | `condition.not(value)` | 布尔值取反 |
@@ -73,6 +75,7 @@
 | `mechanic.entity.remove(entity)` | 移除实体 |
 | `mechanic.entity.addTag(entity, tag)` | 添加 scoreboard tag |
 | `mechanic.entity.removeTag(entity, tag)` | 移除 scoreboard tag |
+| `mechanic.entity.temporaryTag(entity, tag, duration)` | 登记执行所有权的临时标签；并发租约相互隔离，保留原有永久标签 |
 | `mechanic.entity.pull(entity, center, strength)` | 将实体向中心推拉一次 |
 | `mechanic.entity.push(entity, center, strength)` | 将实体从中心推开一次 |
 | `mechanic.entity.potion(entity, effect, duration, amplifier)` | 给予药水效果，等级从 0 开始 |
@@ -86,7 +89,9 @@
 | `mechanic.projectile.launch(from, to, material, speed, damage, lifetime, hitRadius, placeOnHit?)` | 向目标位置发射受控方块投射物 |
 | `mechanic.projectile.forward(material, speed, damage, lifetime, hitRadius, placeOnHit?)` | 按施法者当前视线发射 |
 | `mechanic.projectile.homing(target, material, speed, turnRate, damage, lifetime, hitRadius, placeOnHit?)` | 发射会逐 tick 转向目标的方块投射物 |
-| `mechanic.mob.summon(id, at, count?, tag?, ignoreRejected?)` | 生成受管小兵，默认 1 个，单次最多 16 个，可附加 scoreboard tag；达到召唤上限时可静默返回 `0` |
+| `mechanic.mob.summon(id, at, count?, tag?, ignoreRejected?, lifetime?)` | 生成受管小兵，默认 1 个，单次最多 64 个，返回 `OperationResult`；批次登记执行资源所有权 |
+| `mechanic.mob.cleanup(owner, batch)` | 清理指定批次的存活成员，不计为战斗死亡 |
+| `mechanic.skills.cast(id, caster, target, linked?, ignoreRejected?)` | 显式指定目标启动子技能，返回 `OperationResult`；仅允许忽略预期拒绝 |
 | `mechanic.threat.add(entity, amount)` | 为施法者增加目标威胁值 |
 | `mechanic.threat.set(entity, amount)` | 设置施法者对目标的威胁值 |
 | `mechanic.threat.remove(entity)` | 从施法者威胁表移除目标 |
@@ -113,13 +118,12 @@
 | `variables.set(scope, key, value)` | 设置作用域状态 |
 | `variables.increment(scope, key, amount)` | 累加并返回新值 |
 | `variables.has(scope, key)` | 判断状态项是否存在 |
-| `skills.cast(id, caster, target, linked?, ignoreRejected?)` | 显式指定目标启动子技能，返回执行 UUID；`ignoreRejected` 为 `true` 时，冷却、施法组或预算拒绝返回空字符串，默认仍报告错误 |
 | `command.run(id, target)` | 执行白名单命令模板 |
 | `command.raw(command)` | 执行控制台命令，默认由 `commands.allow-raw` 关闭 |
 
 变量作用域为 `skill`、`caster`、`target`、`world`、`global`。命令白名单和 raw 开关继续有效，开启 raw 时插件加载日志警告服主。
 
-`skills.cast` 不再接受省略目标的两参数写法。`linked` 默认 `true`，设为 `false` 解除父子取消联动；`ignoreRejected` 适合周期行为轮询，避免预期中的冷却或组冲突结束父技能，此时返回空字符串。缺失技能和动作运行错误仍然报告。两种模式都继承根实例与技能调用深度。调用不会等待子技能执行完成。施法组、阶段打断、效果所有权和管理命令见 [施法管理规范](CASTING_SPEC.md)。
+`mechanic.skills.cast` 必须显式传入目标。`linked` 默认 `true`，设为 `false` 解除父子取消联动，仍继承根实例与调用深度。`ignoreRejected` 适合周期轮询，仅将冷却、施法组占用、条件失败和容量拒绝转换为失败结果。缺失定义、生成异常和深度超限始终报告错误。调用不会等待子技能完成。施法与召唤结果都提供 `success`、`id`、`count`、`requested`、`code`、`reason` 成员；数量是调用时快照。完整契约与迁移说明见 [召唤与临时资源规范](SUMMON_LIFECYCLE_SPEC.md)。
 
 ## 快照与当前状态
 

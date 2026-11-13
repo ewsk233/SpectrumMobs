@@ -76,7 +76,7 @@ class ScriptCompilerTest {
                 }
                 state.increment("rageCount", 1)
                 state bursts += 1
-                skills.cast("spectrum:other", caster, target)
+                mechanic.skills.cast("spectrum:other", caster, target)
                 command.raw("say ${'$'}{phase}")
                 command.run("reward_player", target)
                 let nearest = targeter.entities.nearest(caster.position, 8)

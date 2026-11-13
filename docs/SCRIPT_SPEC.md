@@ -42,9 +42,9 @@ block        := "{" { statement } "}"
 
 当前类型检查器提供 `Number`、`String`、`Boolean`、`Duration`、`Percent`、`Entity`、`Player`、`Position`、`List<T>` 和 `Unit`。`Player` 可以作为 `Entity` 使用；其他不兼容类型会在编译阶段报告错误。
 
-施法组、并发策略、阶段取消和效果清理只在技能头部声明，字段和值见 [施法管理规范](CASTING_SPEC.md)。这些元数据不接受动态表达式。`skills.cast` 必须显式传入目标，返回子技能执行 UUID，联动和调用深度规则也见该规范。
+施法组、并发策略、阶段取消和效果清理只在技能头部声明，字段和值见 [施法管理规范](CASTING_SPEC.md)。这些元数据不接受动态表达式。`mechanic.skills.cast` 必须显式传入目标，返回 `OperationResult`，通过 `result.id` 读取子技能执行 UUID。
 
-内置上下文包括 `caster`、`target`、`event`、`phase`、`interval`、`FLAME` 和 `SOUL`。正式动作使用 `targeter`、`condition`、`mechanic` 命名空间，辅助服务为 `random`、`state`、`variables`、`skills`、`command`。参数、YAML 绑定和规则函数见 [参数化技能与规则模块](PARAMETER_RULE_SPEC.md)；完整签名与扩展注册见 [脚本 API](SCRIPT_API.md)。旧的顶层动作与实体条件成员已经删除。
+内置上下文包括 `caster`、`target`、`event`、`phase`、`interval`、`FLAME` 和 `SOUL`。正式动作使用 `targeter`、`condition`、`mechanic` 命名空间，辅助服务为 `random`、`state`、`variables`、`command`。参数、YAML 绑定和规则函数见 [参数化技能与规则模块](PARAMETER_RULE_SPEC.md)；完整签名与扩展注册见 [脚本 API](SCRIPT_API.md)。旧的顶层动作与实体条件成员已经删除。
 
 `event` 提供 `name`、`damage`、`attacker`、`cause` 与 `hand`。`phase` 表示当前阶段 ID，`interval` 表示间隔触发器 ID。实体快照提供 `position`、`health.value` 和 `health.percent`；状态判断使用 `condition.isPlayer(entity)`、`condition.hasPotion(entity, "SPEED")` 等函数。列表提供 `size` 和 `isEmpty`，`targeter.random` 保留列表的具体实体类型。
 
@@ -81,7 +81,7 @@ variables.set("global", "season", 1)
 
 `skill` 是当前技能实例作用域，`caster` 在同一施法者的技能之间共享，`target` 按目标实体 UUID 共享，`world` 按世界 UUID 共享，`global` 在当前运行时实例中共享。所有作用域都受状态项上限约束。
 
-文本只执行 `&` 到 `§` 的颜色码转换，不解析 MiniMessage 或其他标记语言。`random.chance(25%)` 返回布尔值，`random.number(0, 1)` 返回数字；`state.get`、`state.set` 和 `state.increment` 读写施法者状态，也可以使用 `state rageCount += 1` 或 `state rageCount = 0` 语法。`skills.cast("spectrum:other_skill", caster, target)` 可以从当前技能启动另一个技能，仍然受到活动实例、冷却和生命周期限制。`command.run("registered_id", target)` 只能执行配置白名单中的命令模板；`command.raw("...")` 默认关闭，只有 `config.yml` 显式开启后才能执行。状态在同一施法者的技能实例之间共享，并受状态项上限限制。
+文本只执行 `&` 到 `§` 的颜色码转换，不解析 MiniMessage 或其他标记语言。`random.chance(25%)` 返回布尔值，`random.number(0, 1)` 返回数字；`state.get`、`state.set` 和 `state.increment` 读写施法者状态，也可以使用 `state rageCount += 1` 或 `state rageCount = 0` 语法。`mechanic.skills.cast("spectrum:other_skill", caster, target)` 可以从当前技能启动另一个技能，仍然受到活动实例、冷却和生命周期限制。`command.run("registered_id", target)` 只能执行配置白名单中的命令模板；`command.raw("...")` 默认关闭，只有 `config.yml` 显式开启后才能执行。状态在同一施法者的技能实例之间共享，并受状态项上限限制。
 
 完整示例：
 
@@ -115,7 +115,7 @@ skill magma_bolt {
 
 `mechanic.bossbar.show` 的 `progress` 支持 `0.0..1.0` 数字或百分比值，例如 `caster.health.percent`；同一个执行实例内向同一玩家重复显示会更新原 Bar。不同实例拥有独立临时血条，可分别清理。
 
-`mechanic.mob.summon` 按资源 ID 生成受管怪物，在指定位置周围自动分散，并记录这些小兵所属的施法者。施法者怪物的 YAML `summons.max-active` 限制其同时拥有的小兵数量，`count` 可选，单次最多生成 16 个，返回实际生成数量。
+`mechanic.mob.summon` 按资源 ID 生成受管怪物，在指定位置周围自动分散，并记录主人、批次和执行归属。YAML `summons.max-active` 限制主人同时拥有的数量；`count` 可选，单次最多 64 个。返回 `OperationResult`，通过 `result.count` 读取实际生成数量，`result.success` 判断完整成功。批次查询、击破判定、寿命与清理见 [召唤与临时资源规范](SUMMON_LIFECYCLE_SPEC.md)。
 
 ## 语义约定
 

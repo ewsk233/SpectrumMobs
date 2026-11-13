@@ -14,6 +14,8 @@ import taboolib.common.platform.event.SubscribeEvent
 object MobDeathListener {
     @SubscribeEvent
     fun onEntityDeath(event: EntityDeathEvent) {
+        SpectrumMobs.skillRuntime.summons.onDeath(event.entity)
+        if (MobIdentity.isSummonCleanup(event.entity)) return
         val definition = SpectrumMobs.mobService.findDefinition(event.entity) ?: return
         val killer = event.entity.killer
         val variables = mapOf(
@@ -65,7 +67,7 @@ object MobDeathListener {
         SpectrumMobs.mobTriggers.trigger("death", event.entity, event.entity.killer)
         MobIdentity.summonOwner(event.entity)?.let { ownerId ->
             val owner = org.bukkit.Bukkit.getEntity(ownerId)
-            if (owner != null && owner.isValid) {
+            if (owner != null && owner.isValid && !owner.isDead) {
                 SpectrumMobs.mobTriggers.trigger("summon_death", owner, event.entity)
             }
         }

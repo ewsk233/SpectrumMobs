@@ -60,7 +60,7 @@ random.number
 state.get
 state.set
 state.increment
-skills.cast
+mechanic.skills.cast
 command.run
 command.raw
 mechanic.entity.setHealth
@@ -87,7 +87,7 @@ variables.has
 
 命令动作分为两级：`command.run` 只查找 `commands.definitions` 白名单模板；`command.raw` 直接以控制台身份分发字符串，默认关闭。开启 `commands.allow-raw` 后，插件启动日志会明确警告服主。
 
-实体动作全部在服务器主线程执行。`mechanic.entity.teleport` 使用脚本位置值，`mechanic.entity.velocity` 使用 x/y/z 数字，`mechanic.entity.potion` 的 amplifier 从 0 开始。`mechanic.projectile.launch` 创建带 PDC 标记的方块投射物，由插件 Tick 服务执行射线和实体碰撞检测，命中后造成一次伤害并移除；`mechanic.projectile.forward` 使用施法者视线方向发射；两者都支持可选的 `placeOnHit`，开启后会在可放置的方块碰撞点放置真实方块。`mechanic.mob.summon` 只生成配置中已注册的受管怪物，单次调用最多生成 16 个。BossBar 在持续时间结束后自动移除，记分板动作写入目标玩家自己的 Bukkit Scoreboard。
+实体动作全部在服务器主线程执行。`mechanic.entity.teleport` 使用脚本位置值，`mechanic.entity.velocity` 使用 x/y/z 数字，`mechanic.entity.potion` 的 amplifier 从 0 开始。`mechanic.projectile.launch` 创建带 PDC 标记的方块投射物，由插件 Tick 服务执行射线和实体碰撞检测，命中后造成一次伤害并移除；`mechanic.projectile.forward` 使用施法者视线方向发射；两者都支持可选的 `placeOnHit`，开启后会在可放置的方块碰撞点放置真实方块。`mechanic.mob.summon` 只生成配置中已注册的受管怪物，单次最多 64 个，返回结构化结果并登记召唤批次资源。BossBar 在持续时间结束后自动移除，记分板动作写入目标玩家自己的 Bukkit Scoreboard。
 
 ## 预算
 

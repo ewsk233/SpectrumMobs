@@ -55,3 +55,6 @@ error-command-policy-diagnostic: "&c[Command configuration] {0}"
 debug-trigger: "&7[触发器] event={0} caster={1} target={2} skills={3}"
 debug-skill-cast: "&7[技能] id={0} caster={1} result={2}"
 debug-skill-event: "&7[技能事件] id={0} type={1} detail={2}"
+
+error-skill-start: "Skill {0} could not start for {1} [{2}]: {3}"
+debug-summon-result: "Execution {0}, summon batch {1} ({2}): {3}, created {4}/{5}; {6}"

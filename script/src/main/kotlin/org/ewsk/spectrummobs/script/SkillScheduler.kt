@@ -1,10 +1,11 @@
 package org.ewsk.spectrummobs.script
 
 import java.util.UUID
+import org.ewsk.spectrummobs.core.OperationCode
 
 sealed interface SkillStartResult {
     data class Started(val execution: SkillExecution) : SkillStartResult
-    data class Rejected(val reason: String) : SkillStartResult
+    data class Rejected(val reason: String, val code: OperationCode = OperationCode.START_FAILED) : SkillStartResult
 }
 
 sealed interface RuntimeEvent {
@@ -53,6 +54,8 @@ class SkillScheduler(private val limits: RuntimeLimits = RuntimeLimits()) {
 
     fun currentTick(): Long = currentTick
     fun activeExecutions(): List<SkillExecution> = executions.values.toList()
+    fun casterReferences(): List<RuntimeValue.EntityValue> =
+        scopes.values.mapNotNull { it.context.caster as? RuntimeValue.EntityValue }.distinctBy { it.id }
 
     fun executionInfos(): List<SkillExecutionInfo> = scopes.values.map { scope ->
         val execution = scope.execution
@@ -77,10 +80,10 @@ class SkillScheduler(private val limits: RuntimeLimits = RuntimeLimits()) {
         ruleFunctions: Map<String, TypedRuleFunction> = emptyMap()
     ): SkillStartResult {
         if (parent != null && executions[parent.executionId]?.context !== parent) {
-            return SkillStartResult.Rejected("Parent skill execution is no longer active")
+            return SkillStartResult.Rejected("Parent skill execution is no longer active", OperationCode.PARENT_INACTIVE)
         }
         val depth = (parent?.skillDepth ?: 0) + 1
-        if (depth > limits.maxCallDepth) return SkillStartResult.Rejected("Maximum skill call depth exceeded: ${limits.maxCallDepth}")
+        if (depth > limits.maxCallDepth) return SkillStartResult.Rejected("Maximum skill call depth exceeded: ${limits.maxCallDepth}", OperationCode.DEPTH_LIMIT)
         val id = UUID.randomUUID()
         val context = RuntimeContext(variables, actions, casterKey, limits.maxCallDepth,
             limits.maxQueryTargets, worldKey, limits.maxStateEntries,
@@ -96,7 +99,7 @@ class SkillScheduler(private val limits: RuntimeLimits = RuntimeLimits()) {
             bindSkillParameters(skill, context, arguments)
             val requires = skill.requires?.let { evaluator.evaluate(it, context) }
             if (requires != null && (requires as? RuntimeValue.BooleanValue)?.value != true) {
-                return SkillStartResult.Rejected("Skill requires condition was not satisfied")
+                return SkillStartResult.Rejected("Skill requires condition was not satisfied", OperationCode.CONDITION_FAILED)
             }
             val cooldown = skill.cooldown?.let { evaluator.evaluate(it, context) }
             val cooldownTicks = when (cooldown) {
@@ -106,23 +109,23 @@ class SkillScheduler(private val limits: RuntimeLimits = RuntimeLimits()) {
             }
             val key = CooldownKey(skill.id, casterKey)
             val readyAt = cooldowns[key] ?: 0L
-            if (currentTick < readyAt) return SkillStartResult.Rejected("Skill is on cooldown; wait ${readyAt - currentTick} ticks")
+            if (currentTick < readyAt) return SkillStartResult.Rejected("Skill is on cooldown; wait ${readyAt - currentTick} ticks", OperationCode.COOLDOWN)
 
             val ancestors = if (parent != null && linkedToParent) ancestors(parent.executionId) else emptySet()
             val conflicts = scopes.values.filter {
                 it.id !in ancestors && it.context.casterKey == casterKey && it.policy.group == skill.casting.group && isBusy(it.id)
             }.map { it.id }
             if (skill.casting.concurrency == CastingConcurrency.REJECT && conflicts.isNotEmpty()) {
-                return SkillStartResult.Rejected("Casting group is already active: ${skill.casting.group}")
+                return SkillStartResult.Rejected("Casting group is already active: ${skill.casting.group}", OperationCode.GROUP_BUSY)
             }
             val replaced = if (skill.casting.concurrency == CastingConcurrency.REPLACE) linkedSubtree(conflicts) else emptySet()
             if (projectedScopeCount(replaced) + 1 > limits.maxActiveExecutions) {
-                return SkillStartResult.Rejected("Maximum active skill scopes reached: ${limits.maxActiveExecutions}")
+                return SkillStartResult.Rejected("Maximum active skill scopes reached: ${limits.maxActiveExecutions}", OperationCode.CAPACITY)
             }
             if (replaced.isNotEmpty()) cancelScopes(replaced, "Replaced by skill ${skill.id}")
             // 替换过程可能触发平台回调，再次确认父实例仍然可用。
             if (parent != null && linkedToParent && executions[parent.executionId]?.context !== parent) {
-                return SkillStartResult.Rejected("Parent skill execution was cancelled during replacement")
+                return SkillStartResult.Rejected("Parent skill execution was cancelled during replacement", OperationCode.PARENT_INACTIVE)
             }
             val execution = SkillExecution(id, skill, context, limits)
             scopes[id] = Scope(execution, parent != null && linkedToParent, currentTick)
@@ -309,6 +312,7 @@ class SkillScheduler(private val limits: RuntimeLimits = RuntimeLimits()) {
         ScriptType.Position -> value is RuntimeValue.PositionValue
         ScriptType.Particle -> value is RuntimeValue.ParticleValue
         ScriptType.Unit -> value == RuntimeValue.UnitValue
+        ScriptType.OperationResult -> value is RuntimeValue.OperationResultValue
         is ScriptType.ListType -> value is RuntimeValue.ListValue && value.values.all { matches(it, type.elementType) }
         is ScriptType.TypeParameter -> matches(value, type.bound)
         else -> true

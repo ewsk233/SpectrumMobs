@@ -25,7 +25,7 @@
 
 ## 子技能调用
 
-正式签名为 `skills.cast(id, caster, target, linked?, ignoreRejected?)`，返回新实例 UUID 字符串或空字符串。`target` 必须显式传入，`linked` 可省略，默认为 `true`；`ignoreRejected` 默认为 `false`，设为 `true` 时冷却、施法组和预算拒绝只返回空字符串，适合周期行为轮询。两参数调用已经移除，没有兼容别名。
+正式签名为 `mechanic.skills.cast(id, caster, target, linked?, ignoreRejected?)`，返回 `OperationResult`，成功时通过 `result.id` 获取执行 UUID。`target` 必须显式传入；`linked` 默认为 `true`。`ignoreRejected` 默认为 `false`，开启时只把条件、冷却、施法组和容量拒绝返回为 `success = false` 的结果；缺失定义、参数错误、深度超限及执行异常仍报告。旧 `skills.cast` 和两参数调用没有兼容别名。
 
 子技能获得显式的施法者和目标、原事件上下文、当前施法者阶段以及周期上下文，拥有独立的技能局部状态。父技能的普通局部变量不会隐式复制给子技能。原有 `caster`、`target`、`world`、`global` 状态作用域按各自身份共享。
 
@@ -33,7 +33,7 @@
 - `linked = false`：解除父子取消联动，仍保留父 ID、根 ID 和调用深度以供追踪。
 - 所有子技能都继承调用链深度；异步跨 tick 或解除联动都不能重置深度。外部命令和怪物触发器作为新根调用，深度为 1。
 - 新子技能安排到后续调度轮次执行，不会在动作中阻塞等待其完成。
-- 子技能启动被条件、冷却、组或预算拒绝时，默认 `skills.cast` 报告执行错误，父实例按失败规则结束；`ignoreRejected = true` 时只返回空字符串。缺失技能和动作运行错误始终报告。
+- 子技能启动被条件、冷却、组或容量拒绝时，默认 `mechanic.skills.cast` 报告执行错误，父实例按失败规则结束；`ignoreRejected = true` 时返回带原因码的失败结果。缺失技能、调用深度超限和动作运行错误始终报告。
 
 解除父子联动不会绕过该实体自身的阶段策略、死亡、移除或世界卸载规则。同一实体的阶段切换仍会独立检查所有相关实例。
 
@@ -48,7 +48,7 @@ skill charged_attack {
     cooldown = 8s
 
     let center = caster.position
-    let warning = skills.cast("spectrum:charge_warning", caster, target)
+    let warning = mechanic.skills.cast("spectrum:charge_warning", caster, target)
     mechanic.particles.circle(center, SOUL, 5, 48)
     wait 3s
     for player in targeter.players.within(center, 5) {
@@ -92,7 +92,7 @@ skill charge_warning {
 - `engine.max-active-executions` 同时约束这些保留作用域，防止程序不断结束却无限累积效果记录。
 - YAML 声明的持久 BossBar 继续由怪物服务管理，不归某个技能实例所有。
 
-已经造成的伤害、发送的消息、播放的声音与粒子不会回滚；已经放置的真实方块也不会自动撤销。召唤物继续由怪物 YAML 的 `summons` 生命周期管理。
+已经造成的伤害、发送的消息、播放的声音与粒子不会回滚；已经放置的真实方块也不会自动撤销。脚本召唤批次和临时标签同样登记执行效果所有权；召唤物并存上限由 YAML `summons.max-active` 管理。详见 [召唤与临时资源规范](SUMMON_LIFECYCLE_SPEC.md)。
 
 平台扩展可以通过 `context.effects.register(context.executionId, key, cleanup)` 登记可清理资源，并在资源自然结束时调用 `context.effects.release(context.executionId, key)`。同一实例内资源键必须唯一。实现与取消回调都在服务器主线程执行。
 

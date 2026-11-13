@@ -5,10 +5,13 @@ import org.bukkit.ChatColor
 import org.bukkit.Location
 import org.bukkit.Particle
 import org.bukkit.entity.Entity
+import org.bukkit.NamespacedKey
+import org.bukkit.persistence.PersistentDataType
 import org.ewsk.spectrummobs.integration.MobDeathContext
 import org.ewsk.spectrummobs.integration.MobModelIntegration
 import org.ewsk.spectrummobs.integration.MobSpawnContext
 import org.ewsk.spectrummobs.core.MobModel
+import org.ewsk.spectrummobs.runtime.ParticleAdapter
 import java.util.UUID
 import kotlin.math.PI
 import kotlin.math.cos
@@ -35,6 +38,7 @@ class DisplayVisualService : MobModelIntegration {
     )
 
     private val active = linkedMapOf<UUID, ActiveVisual>()
+    private val visualOwnerKey = NamespacedKey("spectrummobs", "visual_owner")
     private val textDisplayClass: Class<*>? = runCatching { Class.forName("org.bukkit.entity.TextDisplay") }.getOrNull()
 
     override fun supports(model: MobModel): Boolean =
@@ -51,13 +55,13 @@ class DisplayVisualService : MobModelIntegration {
         val height = options["height"]?.toDoubleOrNull()?.coerceIn(0.0, 32.0) ?: 1.8
         val speed = options["rotation"]?.toDoubleOrNull()?.coerceIn(-1.0, 1.0) ?: 0.035
         val rotationTag = options["rotation-tag"]?.trim()?.takeIf { it.isNotEmpty() }
-        val particle = options["particle"]?.let { runCatching { Particle.valueOf(it.uppercase()) }.getOrNull() }
+        val particle = options["particle"]?.let { runCatching { ParticleAdapter.resolve(it) }.getOrNull() }
         val particleEvery = options["particle-every"]?.toLongOrNull()?.coerceAtLeast(1L) ?: 2L
         val spawned = mutableListOf<Entity>()
         repeat(count) { index ->
-            createText(context.entity.location, legacy(glyphs[index % glyphs.size]), options)?.let(spawned::add)
+            createText(context.entity.location, legacy(glyphs[index % glyphs.size]), options, context.entity.uniqueId)?.let(spawned::add)
         }
-        val core = createText(context.entity.location.clone().add(0.0, height, 0.0), legacy(options["core"] ?: "✦"), options)
+        val core = createText(context.entity.location.clone().add(0.0, height, 0.0), legacy(options["core"] ?: "✦"), options, context.entity.uniqueId)
         active[context.entity.uniqueId] = ActiveVisual(context.entity.uniqueId, context.entity.world.uid, spawned, core, radius, height, speed, rotationTag, particle, particleEvery)
     }
 
@@ -114,13 +118,25 @@ class DisplayVisualService : MobModelIntegration {
         active.keys.toList().forEach(::detachOwner)
     }
 
-    private fun createText(location: Location, text: String, options: Map<String, String>): Entity? {
+    fun cleanupOrphans(entities: Iterable<Entity>) {
+        entities.forEach { entity ->
+            val owner = entity.persistentDataContainer.get(visualOwnerKey, PersistentDataType.STRING) ?: return@forEach
+            val visual = runCatching { UUID.fromString(owner) }.getOrNull()?.let(active::get)
+            if (visual == null || (visual.glyphs.none { it.uniqueId == entity.uniqueId } && visual.core?.uniqueId != entity.uniqueId)) {
+                entity.remove()
+            }
+        }
+    }
+
+    private fun createText(location: Location, text: String, options: Map<String, String>, owner: UUID): Entity? {
         val type = textDisplayClass ?: return null
         val world = location.world ?: return null
         val spawn = world.javaClass.methods.firstOrNull {
             it.name == "spawn" && it.parameterTypes.size == 2 && it.parameterTypes[0] == Location::class.java && it.parameterTypes[1] == Class::class.java
         } ?: return null
         val display = runCatching { spawn.invoke(world, location, type) as? Entity }.getOrNull() ?: return null
+        display.isPersistent = false
+        display.persistentDataContainer.set(visualOwnerKey, PersistentDataType.STRING, owner.toString())
         invoke(display, "setText", text)
         invoke(display, "setSeeThrough", options["see-through"]?.toBoolean() ?: true)
         invoke(display, "setShadowed", options["shadowed"]?.toBoolean() ?: true)

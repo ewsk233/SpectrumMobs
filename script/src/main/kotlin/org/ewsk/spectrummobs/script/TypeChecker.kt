@@ -108,6 +108,7 @@ class TypeChecker(
             "Player" -> ScriptType.Player
             "Position" -> ScriptType.Position
             "Particle" -> ScriptType.Particle
+            "OperationResult" -> ScriptType.OperationResult
             "Unit" -> ScriptType.Unit
             else -> {
                 error(location, "Unknown type '${type.name}'")
@@ -369,6 +370,12 @@ class TypeChecker(
                 "attacker" -> ScriptType.Entity
                 "cause" -> ScriptType.Text
                 "hand" -> ScriptType.Text
+                else -> unknownMember(receiver, name, location)
+            }
+            ScriptType.OperationResult -> when (name) {
+                "success" -> ScriptType.Boolean
+                "id", "code", "reason" -> ScriptType.Text
+                "count", "requested" -> ScriptType.Number
                 else -> unknownMember(receiver, name, location)
             }
             is ScriptType.ListType -> when (name) {

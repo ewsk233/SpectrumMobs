@@ -3,12 +3,20 @@ skill manuscript_syntax_lock {
     group = "major"
     concurrency = "reject"
     requires phase == "rewrite"
-    let existing = targeter.entities.tagged(caster.position, 18, "spectrum_manuscript_syntax")
+    let existing = targeter.summons(caster, tag = "spectrum_manuscript_syntax")
     if (existing.isEmpty) {
-        mechanic.mob.summon(id = "spectrum:manuscript_pillar", at = caster.position, count = 3, tag = "spectrum_manuscript_syntax")
-        for player in targeter.players.within(caster.position, 32) {
-            mechanic.title.show(player, "&d语法锁", "&5摧毁文字碑以解除防护", 5t, 40t, 10t)
+        let batch = mechanic.mob.summon(id = "spectrum:manuscript_pillar", at = caster.position, count = 3, tag = "spectrum_manuscript_syntax", ignoreRejected = true, lifetime = 21s)
+        if (batch.success) {
+            for player in targeter.players.within(caster.position, 32) {
+                mechanic.title.show(player, "&d语法锁", "&5摧毁文字碑以解除防护", 5t, 40t, 10t)
+            }
+            wait 20s
+            if (condition.summons.defeated(caster, batch)) {
+                mechanic.entity.temporaryTag(caster, "spectrum_manuscript_vulnerable", 4s)
+            }
+            mechanic.mob.cleanup(caster, batch)
+        } else {
+            mechanic.mob.cleanup(caster, batch)
         }
-        wait 20s
     }
 }

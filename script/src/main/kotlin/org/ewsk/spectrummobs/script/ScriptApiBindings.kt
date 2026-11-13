@@ -57,6 +57,7 @@ class ScriptApiBindings private constructor(
             ScriptType.Particle -> value is RuntimeValue.ParticleValue
             ScriptType.Health -> value is RuntimeValue.HealthValue
             ScriptType.EventContext -> value is RuntimeValue.EventValue
+            ScriptType.OperationResult -> value is RuntimeValue.OperationResultValue
             ScriptType.Null -> value == RuntimeValue.NullValue
             ScriptType.Unit -> value == RuntimeValue.UnitValue
             is ScriptType.ListType -> value is RuntimeValue.ListValue && value.values.all { it != RuntimeValue.NullValue && matches(it, type.elementType) }

@@ -2,17 +2,21 @@ package org.ewsk.spectrummobs.mob
 
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.world.ChunkLoadEvent
+import org.bukkit.event.world.ChunkUnloadEvent
 import org.bukkit.event.world.WorldUnloadEvent
 import org.ewsk.spectrummobs.SpectrumMobs
 import org.ewsk.spectrummobs.integration.MobSpawnContext
 import taboolib.common.platform.event.OptionalEvent
 import taboolib.common.platform.event.SubscribeEvent
+import taboolib.common.platform.event.EventPriority
 
 object MobLifecycleListener {
     @SubscribeEvent
     fun onChunkLoad(event: ChunkLoadEvent) {
+        SpectrumMobs.visuals.cleanupOrphans(event.chunk.entities.asIterable())
+        event.chunk.entities.forEach(SpectrumMobs.skillRuntime.summons::cleanupOrphan)
         event.chunk.entities
-            .filter { MobIdentity.isManaged(it) }
+            .filter { it.isValid && !MobIdentity.isSummonCleanup(it) && MobIdentity.isManaged(it) }
             .forEach {
                 SpectrumMobs.mobService.findDefinition(it)?.let { definition ->
                     SpectrumMobs.visuals.reattach(MobSpawnContext(it, definition))
@@ -23,8 +27,27 @@ object MobLifecycleListener {
             }
     }
 
+    @SubscribeEvent(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onChunkUnload(event: ChunkUnloadEvent) {
+        event.chunk.entities.filter(MobIdentity::isManaged).forEach { entity ->
+            SpectrumMobs.skillRuntime.summons.onRemoved(entity)
+            if (MobIdentity.summonBatch(entity) != null) {
+                MobIdentity.markSummonCleanup(entity)
+                entity.remove()
+            }
+            SpectrumMobs.mobIntervals.unregister(entity)
+            SpectrumMobs.mobBossBars.unregister(entity)
+            SpectrumMobs.mobMovement.unregister(entity)
+            SpectrumMobs.visuals.detachOwner(entity.uniqueId)
+            if (SpectrumMobs.skillRuntime.lifecyclePolicy.cancelOnCasterDespawn) {
+                SpectrumMobs.skillRuntime.cancelByCaster(entity, "Caster chunk unloaded")
+            }
+        }
+    }
+
     @SubscribeEvent
     fun onEntityDeath(event: EntityDeathEvent) {
+        SpectrumMobs.skillRuntime.summons.onDeath(event.entity)
         SpectrumMobs.mobService.cleanupSummons(event.entity)
         SpectrumMobs.mobIntervals.unregister(event.entity)
         SpectrumMobs.mobBossBars.unregister(event.entity)
@@ -38,8 +61,10 @@ object MobLifecycleListener {
         }
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onWorldUnload(event: WorldUnloadEvent) {
+        if (event.isCancelled) return
+        SpectrumMobs.skillRuntime.summons.cleanupWorld(event.world.uid)
         SpectrumMobs.mobService.cleanupSummonsInWorld(event.world.uid)
         SpectrumMobs.mobIntervals.unregisterByWorld(event.world.uid.toString())
         SpectrumMobs.mobBossBars.unregisterByWorld(event.world.uid.toString())
@@ -55,6 +80,7 @@ object MobLifecycleListener {
     @SubscribeEvent(bind = "org.bukkit.event.entity.EntityRemoveFromWorldEvent")
     fun onEntityRemoved(event: OptionalEvent) {
         val entity = event.read<org.bukkit.entity.Entity>("entity") ?: return
+        SpectrumMobs.skillRuntime.summons.onRemoved(entity)
         SpectrumMobs.mobService.cleanupSummons(entity)
         SpectrumMobs.mobIntervals.unregister(entity)
         SpectrumMobs.mobBossBars.unregister(entity)

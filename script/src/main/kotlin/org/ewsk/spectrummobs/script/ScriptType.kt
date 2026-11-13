@@ -59,6 +59,10 @@ sealed interface ScriptType {
         override val displayName: String = "Event"
     }
 
+    data object OperationResult : ScriptType {
+        override val displayName: String = "OperationResult"
+    }
+
     data object Unit : ScriptType {
         override val displayName: String = "Unit"
     }

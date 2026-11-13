@@ -8,8 +8,8 @@ skill magma_lord_summon {
         mechanic.sound.play(player, "block.lava.pop", 1, 0.8)
     }
     let summoned = mechanic.mob.summon(id = "spectrum:magma_minion", at = center, count = 2)
-    state.increment("summons", summoned)
+    state.increment("summons", summoned.count)
     for player in targeter.players.within(center, 16) {
-        mechanic.actionbar.show(player, "&c熔核君王召唤了 ${summoned} 个熔岩仆从！")
+        mechanic.actionbar.show(player, "&c熔核君王召唤了 ${summoned.count} 个熔岩仆从！")
     }
 }

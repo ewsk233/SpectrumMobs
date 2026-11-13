@@ -57,7 +57,7 @@ class ParameterizedSkillTest {
 
     @Test
     fun childSkillCallAllowsDeclaredParameterNamesButRejectsUnknownStaticArguments() {
-        val ok = ScriptCompiler().compile("skill parent { skills.cast(\"spectrum:child\", caster, target, radius = 8, windup = 2s) }")
+        val ok = ScriptCompiler().compile("skill parent { mechanic.skills.cast(\"spectrum:child\", caster, target, radius = 8, windup = 2s) }")
         assertIs<CompilationResult.Success>(ok)
         // The target skill is checked at the repository/runtime boundary, because the call may be dynamic.
     }

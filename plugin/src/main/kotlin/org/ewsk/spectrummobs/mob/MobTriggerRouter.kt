@@ -91,7 +91,16 @@ class MobTriggerRouter(
             )
         }
         val variables = context.variables()
-        return skills.mapIndexed { index, id -> runtime.cast(id.toString(), caster, variables, arguments(index)) }
+        return skills.mapIndexed { index, id ->
+            runtime.cast(id.toString(), caster, variables, arguments(index)).also { result ->
+                when {
+                    result is SkillCastResult.Missing ->
+                        SpectrumMobsI18n.log("error-skill-start", id, caster.uniqueId, "missing_definition", "Skill not found: ${result.id}")
+                    result is SkillCastResult.Rejected && !result.code.expectedRejection ->
+                        SpectrumMobsI18n.log("error-skill-start", id, caster.uniqueId, result.code.key, result.reason)
+                }
+            }
+        }
     }
 
     internal fun toRuntimeValue(value: Any?): RuntimeValue = when (value) {

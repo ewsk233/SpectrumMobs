@@ -27,11 +27,11 @@ class CastingControlTest {
     }
 
     @Test
-    fun childCallsRequireExplicitTargetAndReturnAnExecutionIdentifier() {
-        val configured = skill("let child = skills.cast(\"spectrum:child\", caster, target, linked = false)")
-        assertEquals(ScriptType.Text, (configured.body.single() as IrLet).value.type)
-        assertIs<CompilationResult.Failure>(ScriptCompiler().compile("skill bad { skills.cast(\"spectrum:child\", caster) }"))
-        assertIs<CompilationResult.Failure>(ScriptCompiler().compile("skill bad { skills.cast(\"spectrum:child\", caster, target, linked = \"false\") }"))
+    fun childCallsRequireExplicitTargetAndReturnAStructuredResult() {
+        val configured = skill("let child = mechanic.skills.cast(\"spectrum:child\", caster, target, linked = false)")
+        assertEquals(ScriptType.OperationResult, (configured.body.single() as IrLet).value.type)
+        assertIs<CompilationResult.Failure>(ScriptCompiler().compile("skill bad { mechanic.skills.cast(\"spectrum:child\", caster) }"))
+        assertIs<CompilationResult.Failure>(ScriptCompiler().compile("skill bad { mechanic.skills.cast(\"spectrum:child\", caster, target, linked = \"false\") }"))
     }
 
     @Test

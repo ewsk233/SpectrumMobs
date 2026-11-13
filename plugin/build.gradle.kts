@@ -42,6 +42,7 @@ dependencies {
     testImplementation("ink.ptms.core:v12004:12004:mapped")
     testImplementation("ink.ptms.core:v12004:12004:universal")
     testRuntimeOnly("com.google.guava:guava:32.1.2-jre")
+    testRuntimeOnly("org.joml:joml:1.10.5")
     testImplementation("org.mockito:mockito-core:4.11.0")
     implementation(project(":core"))
     implementation(project(":script"))

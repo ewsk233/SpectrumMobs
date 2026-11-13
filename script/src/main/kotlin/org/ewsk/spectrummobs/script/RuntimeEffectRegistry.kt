@@ -32,6 +32,16 @@ class RuntimeEffectRegistry(
         return true
     }
 
+    /** 主动销毁单项效果；与整实例清理相同地隔离并报告平台异常。 */
+    fun dispose(owner: UUID, key: String): Boolean {
+        val effects = owned[owner] ?: return false
+        val cleanup = effects.remove(key) ?: return false
+        if (effects.isEmpty()) owned.remove(owner)
+        runCleanup(owner, key, cleanup)
+        onChanged(owner)
+        return true
+    }
+
     fun cleanup(owner: UUID) {
         val effects = owned.remove(owner) ?: return
         effects.forEach { (key, cleanup) -> runCleanup(owner, key, cleanup) }

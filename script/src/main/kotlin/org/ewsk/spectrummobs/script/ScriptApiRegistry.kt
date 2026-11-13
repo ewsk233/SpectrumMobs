@@ -77,8 +77,17 @@ class ScriptApiRegistry private constructor(
                 ),
                 ScriptType.ListType(ScriptType.TypeParameter("T", ScriptType.Entity))
             )
+            function("targeter.summons", listOf(
+                FunctionParameter("owner", ScriptType.Entity),
+                FunctionParameter("batch", ScriptType.OperationResult, required = false),
+                FunctionParameter("tag", ScriptType.Text, required = false)
+            ), ScriptType.ListType(ScriptType.Entity))
 
             // Condition
+            function("condition.summons.defeated", listOf(
+                FunctionParameter("owner", ScriptType.Entity),
+                FunctionParameter("batch", ScriptType.OperationResult)
+            ), ScriptType.Boolean)
             function("condition.all", listOf(FunctionParameter("left", ScriptType.Boolean), FunctionParameter("right", ScriptType.Boolean)), ScriptType.Boolean)
             function("condition.any", listOf(FunctionParameter("left", ScriptType.Boolean), FunctionParameter("right", ScriptType.Boolean)), ScriptType.Boolean)
             function("condition.not", listOf(FunctionParameter("value", ScriptType.Boolean)), ScriptType.Boolean)
@@ -165,6 +174,10 @@ class ScriptApiRegistry private constructor(
             function("mechanic.entity.remove", listOf(FunctionParameter("entity", ScriptType.Entity)), ScriptType.Unit)
             function("mechanic.entity.addTag", listOf(FunctionParameter("entity", ScriptType.Entity), FunctionParameter("tag", ScriptType.Text)), ScriptType.Unit)
             function("mechanic.entity.removeTag", listOf(FunctionParameter("entity", ScriptType.Entity), FunctionParameter("tag", ScriptType.Text)), ScriptType.Unit)
+            function("mechanic.entity.temporaryTag", listOf(
+                FunctionParameter("entity", ScriptType.Entity), FunctionParameter("tag", ScriptType.Text),
+                FunctionParameter("duration", ScriptType.Duration)
+            ), ScriptType.Unit)
             function("mechanic.entity.pull", listOf(FunctionParameter("entity", ScriptType.Entity), FunctionParameter("center", ScriptType.Position), FunctionParameter("strength", ScriptType.Number)), ScriptType.Unit)
             function("mechanic.entity.push", listOf(FunctionParameter("entity", ScriptType.Entity), FunctionParameter("center", ScriptType.Position), FunctionParameter("strength", ScriptType.Number)), ScriptType.Unit)
             function(
@@ -200,10 +213,15 @@ class ScriptApiRegistry private constructor(
                     FunctionParameter("at", ScriptType.Position),
                     FunctionParameter("count", ScriptType.Number, required = false),
                     FunctionParameter("tag", ScriptType.Text, required = false),
-                    FunctionParameter("ignoreRejected", ScriptType.Boolean, required = false)
+                    FunctionParameter("ignoreRejected", ScriptType.Boolean, required = false),
+                    FunctionParameter("lifetime", ScriptType.Duration, required = false)
                 ),
-                ScriptType.Number
+                ScriptType.OperationResult
             )
+            function("mechanic.mob.cleanup", listOf(
+                FunctionParameter("owner", ScriptType.Entity),
+                FunctionParameter("batch", ScriptType.OperationResult)
+            ), ScriptType.Unit)
             function("mechanic.threat.add", listOf(FunctionParameter("entity", ScriptType.Entity), FunctionParameter("amount", ScriptType.Number)), ScriptType.Unit)
             function("mechanic.threat.set", listOf(FunctionParameter("entity", ScriptType.Entity), FunctionParameter("amount", ScriptType.Number)), ScriptType.Unit)
             function("mechanic.threat.remove", listOf(FunctionParameter("entity", ScriptType.Entity)), ScriptType.Unit)
@@ -234,11 +252,11 @@ class ScriptApiRegistry private constructor(
             function("state.get", listOf(FunctionParameter("key", ScriptType.Text)), ScriptType.Number, safeInHeaders = true)
             function("state.set", listOf(FunctionParameter("key", ScriptType.Text), FunctionParameter("value", ScriptType.Number)), ScriptType.Unit)
             function("state.increment", listOf(FunctionParameter("key", ScriptType.Text), FunctionParameter("amount", ScriptType.Number)), ScriptType.Number)
-            function("skills.cast", listOf(
+            function("mechanic.skills.cast", listOf(
                 FunctionParameter("id", ScriptType.Text), FunctionParameter("caster", ScriptType.Entity),
                 FunctionParameter("target", ScriptType.Entity), FunctionParameter("linked", ScriptType.Boolean, required = false),
                 FunctionParameter("ignoreRejected", ScriptType.Boolean, required = false)
-            ), ScriptType.Text, allowExtraNamed = true)
+            ), ScriptType.OperationResult, allowExtraNamed = true)
             function("command.raw", listOf(FunctionParameter("command", ScriptType.Text)), ScriptType.Unit)
             function("command.run", listOf(FunctionParameter("id", ScriptType.Text), FunctionParameter("target", ScriptType.Entity)), ScriptType.Unit)
             function("variables.get", listOf(FunctionParameter("scope", ScriptType.Text), FunctionParameter("key", ScriptType.Text)), ScriptType.Number, safeInHeaders = true)
@@ -326,7 +344,7 @@ class ScriptApiRegistry private constructor(
 
             val API_NAME = Regex("[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)+")
             val PARAMETER_NAME = Regex("[A-Za-z_][A-Za-z0-9_]*")
-            val API_ROOTS = setOf("targeter", "condition", "mechanic", "random", "state", "skills", "command", "variables")
+            val API_ROOTS = setOf("targeter", "condition", "mechanic", "random", "state", "command", "variables")
             val RESERVED_ROOTS = setOf("caster", "target", "event", "phase", "interval", "flame", "soul", "skill", "let", "if", "else", "for", "in", "repeat", "return", "wait", "cooldown", "requires", "true", "false", "null")
         }
     }

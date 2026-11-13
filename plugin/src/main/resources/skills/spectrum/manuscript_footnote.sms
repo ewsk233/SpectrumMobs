@@ -2,10 +2,14 @@ skill manuscript_footnote {
     cooldown = 20s
     group = "major"
     concurrency = "reject"
-    if (targeter.entities.tagged(caster.position, 24, "spectrum_manuscript_fragment").isEmpty) {
-        mechanic.mob.summon(id = "spectrum:manuscript_fragment", at = caster.position, count = 3, tag = "spectrum_manuscript_fragment")
-        for player in targeter.players.within(caster.position, 24) {
-            mechanic.actionbar.show(player, "&d文字碎片已经出现，优先处理它们。")
+    if (targeter.summons(caster, tag = "spectrum_manuscript_fragment").isEmpty) {
+        let batch = mechanic.mob.summon(id = "spectrum:manuscript_fragment", at = caster.position, count = 3, tag = "spectrum_manuscript_fragment", ignoreRejected = true, lifetime = 45s)
+        if (batch.success) {
+            for player in targeter.players.within(caster.position, 24) {
+                mechanic.actionbar.show(player, "&d文字碎片已经出现，优先处理它们。")
+            }
+        } else {
+            mechanic.mob.cleanup(caster, batch)
         }
     }
 }

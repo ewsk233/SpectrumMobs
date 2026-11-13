@@ -107,7 +107,7 @@ class SkillEffectOwnershipTest {
         try {
             directory.resolve("test.sms").writeText("skill test {\n$body\n}")
             val projectiles = ProjectileService()
-            val runtime = SkillRuntimeService(SkillFileRepository(directory), projectileService = projectiles, summonMob = { _, _, _ -> false })
+            val runtime = SkillRuntimeService(SkillFileRepository(directory), projectileService = projectiles, summonMob = { org.ewsk.spectrummobs.mob.MobSpawnResult.Failed("Summoning disabled", org.ewsk.spectrummobs.core.OperationCode.CAPACITY) })
             assertIs<SkillReloadResult.Success>(runtime.reload())
             test(runtime, projectiles)
         } finally { directory.deleteRecursively() }

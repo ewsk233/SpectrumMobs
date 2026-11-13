@@ -22,7 +22,7 @@ class SkillRuntimeApiTest {
             val runtime = SkillRuntimeService(
                 SkillFileRepository(directory),
                 projectileService = ProjectileService(),
-                summonMob = { _, _, _ -> false },
+                summonMob = { org.ewsk.spectrummobs.mob.MobSpawnResult.Failed("Summoning disabled", org.ewsk.spectrummobs.core.OperationCode.CAPACITY) },
                 extendApi = {
                     register("mechanic.test.mark", emptyList(), ScriptType.Unit) { _, _ -> RuntimeValue.UnitValue }
                 }
@@ -48,7 +48,7 @@ class SkillRuntimeApiTest {
             val runtime = SkillRuntimeService(
                 SkillFileRepository(skills),
                 projectileService = ProjectileService(),
-                summonMob = { _, _, _ -> false }
+                summonMob = { org.ewsk.spectrummobs.mob.MobSpawnResult.Failed("Summoning disabled", org.ewsk.spectrummobs.core.OperationCode.CAPACITY) }
             )
             assertIs<SkillReloadResult.Success>(runtime.reload())
             mobs.resolve("valid.yml").writeText("valid")
@@ -77,9 +77,10 @@ class SkillRuntimeApiTest {
             val runtime = SkillRuntimeService(
                 SkillFileRepository(skills),
                 projectileService = ProjectileService(),
-                summonMob = { _, _, _ -> false }
+                summonMob = { org.ewsk.spectrummobs.mob.MobSpawnResult.Failed("Summoning disabled", org.ewsk.spectrummobs.core.OperationCode.CAPACITY) }
             )
-            assertIs<SkillReloadResult.Success>(runtime.reload())
+            val reload = assertIs<SkillReloadResult.Success>(runtime.reload())
+            assertEquals(emptyList(), reload.diagnostics)
             mobs.resolve("boss.yml").writeText("boss")
             val repository = MobConfigRepository(mobs, fileReader = {
                 mapOf(

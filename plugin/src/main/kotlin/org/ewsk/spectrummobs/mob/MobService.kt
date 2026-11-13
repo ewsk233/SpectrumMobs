@@ -3,6 +3,7 @@ package org.ewsk.spectrummobs.mob
 import org.bukkit.ChatColor
 import org.bukkit.Bukkit
 import org.bukkit.Location
+import org.bukkit.World
 import org.bukkit.Material
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.Entity
@@ -13,6 +14,7 @@ import org.ewsk.spectrummobs.config.MobConfigRepository
 import org.ewsk.spectrummobs.core.EquipmentDefinition
 import org.ewsk.spectrummobs.core.MobDefinition
 import org.ewsk.spectrummobs.core.MobPhase
+import org.ewsk.spectrummobs.core.OperationCode
 import org.ewsk.spectrummobs.integration.MobIntegrationRegistry
 import org.ewsk.spectrummobs.integration.MobSpawnContext
 import org.ewsk.spectrummobs.i18n.SpectrumMobsI18n
@@ -25,7 +27,7 @@ sealed interface MobSpawnResult {
         val instanceId: UUID
     ) : MobSpawnResult
 
-    data class Failed(val reason: String) : MobSpawnResult
+    data class Failed(val reason: String, val code: OperationCode = OperationCode.SPAWN_FAILED) : MobSpawnResult
 }
 
 sealed interface MobKillResult {
@@ -42,55 +44,98 @@ class MobService(
     private val onSpawn: (Entity) -> Unit = {}
 ) {
     private val phaseTracker = MobPhaseTracker()
-
-    fun spawn(id: String, location: Location, summonOwner: Entity? = null): MobSpawnResult {
-        val definition = repository.current().find(id)
-            ?: return MobSpawnResult.Failed("Mob definition not found: $id")
-        val world = location.world ?: return MobSpawnResult.Failed("The location has no world")
-        val entityType = resolveEntityType(definition.entityType)
-            ?: return MobSpawnResult.Failed("Unknown entity type: ${definition.entityType}")
-        if (!entityType.isSpawnable) {
-            return MobSpawnResult.Failed("Entity type ${definition.entityType} cannot be spawned")
-        }
-
-        val entity = runCatching { world.spawnEntity(location, entityType) }.getOrElse {
-            return MobSpawnResult.Failed("Entity spawn failed: ${it.message ?: it.javaClass.simpleName}")
-        }
-        val instanceId = UUID.randomUUID()
-        MobIdentity.mark(entity, definition.id.toString(), instanceId)
-        summonOwner?.let { MobIdentity.markSummonOwner(entity, it.uniqueId) }
-        // SpectrumMobs 管理的实体不能按原版远距离刷怪规则自动消失。
-        entity.isPersistent = true
-        preventNaturalRemoval(entity)
-        applyDefinition(entity, definition)
-        phaseTracker.initialize(entity, definition)?.let { applyPhase(entity, definition, it) }
-        definition.model?.let { MobIdentity.markModel(entity, it) }
-        reportIntegrationFailures(
-            MobIntegrationRegistry.notifySpawn(MobSpawnContext(entity, definition))
-        )
-        onSpawn(entity)
-        return MobSpawnResult.Spawned(entity, definition, instanceId)
+    private sealed interface SpawnPlan {
+        data class Ready(val definition: MobDefinition, val world: World, val type: EntityType) : SpawnPlan
+        data class Failed(val result: MobSpawnResult.Failed) : SpawnPlan
     }
 
-    fun summon(owner: Entity, id: String, location: Location): MobSpawnResult {
+    private fun prepareSpawn(id: String, location: Location): SpawnPlan {
+        val definition = repository.current().find(id)
+            ?: return SpawnPlan.Failed(MobSpawnResult.Failed("Mob definition not found: $id", OperationCode.MISSING_DEFINITION))
+        val world = location.world
+            ?: return SpawnPlan.Failed(MobSpawnResult.Failed("The location has no world", OperationCode.WORLD_UNAVAILABLE))
+        val entityType = resolveEntityType(definition.entityType)
+            ?: return SpawnPlan.Failed(MobSpawnResult.Failed("Unknown entity type: ${definition.entityType}", OperationCode.INVALID_ARGUMENT))
+        if (!entityType.isSpawnable) {
+            return SpawnPlan.Failed(MobSpawnResult.Failed("Entity type ${definition.entityType} cannot be spawned", OperationCode.INVALID_ARGUMENT))
+        }
+        return SpawnPlan.Ready(definition, world, entityType)
+    }
+
+    fun spawn(
+        id: String, location: Location, summonOwner: Entity? = null,
+        batchId: UUID? = null, executionId: UUID? = null, tag: String? = null
+    ): MobSpawnResult = when (val plan = prepareSpawn(id, location)) {
+        is SpawnPlan.Failed -> plan.result
+        is SpawnPlan.Ready -> spawnPrepared(plan, location, summonOwner, batchId, executionId, tag)
+    }
+
+    private fun spawnPrepared(
+        plan: SpawnPlan.Ready, location: Location, summonOwner: Entity?,
+        batchId: UUID?, executionId: UUID?, tag: String?
+    ): MobSpawnResult {
+        val definition = plan.definition
+        val entity = runCatching { plan.world.spawnEntity(location, plan.type) }.getOrElse {
+            return MobSpawnResult.Failed("Entity spawn failed: ${it.message ?: it.javaClass.simpleName}")
+        }
+        return try {
+            val instanceId = UUID.randomUUID()
+            MobIdentity.mark(entity, definition.id.toString(), instanceId)
+            summonOwner?.let { MobIdentity.markSummonOwner(entity, it.uniqueId) }
+            if (batchId != null && executionId != null) MobIdentity.markSummonBatch(entity, batchId, executionId)
+            tag?.let(entity::addScoreboardTag)
+            // SpectrumMobs 管理的实体不能按原版远距离刷怪规则自动消失。
+            entity.isPersistent = true
+            preventNaturalRemoval(entity)
+            applyDefinition(entity, definition)
+            phaseTracker.initialize(entity, definition)?.let { applyPhase(entity, definition, it) }
+            definition.model?.let { MobIdentity.markModel(entity, it) }
+            reportIntegrationFailures(
+                MobIntegrationRegistry.notifySpawn(MobSpawnContext(entity, definition))
+            )
+            onSpawn(entity)
+            if (!entity.isValid && !entity.isDead) {
+                throw IllegalStateException("Entity creation was cancelled or the entity was removed during initialization")
+            }
+            MobSpawnResult.Spawned(entity, definition, instanceId)
+        } catch (error: Exception) {
+            MobIdentity.markSummonCleanup(entity)
+            entity.remove()
+            MobSpawnResult.Failed("Entity initialization failed for ${definition.id}: ${error.message ?: error.javaClass.simpleName}")
+        }
+    }
+
+    fun summon(
+        owner: Entity, id: String, location: Location,
+        batchId: UUID? = null, executionId: UUID? = null, tag: String? = null
+    ): MobSpawnResult {
+        // 先校验配置，再检查容量，避免容量拒绝掩盖缺失定义等真正错误。
+        val plan = when (val prepared = prepareSpawn(id, location)) {
+            is SpawnPlan.Failed -> return prepared.result
+            is SpawnPlan.Ready -> prepared
+        }
+        if (!owner.isValid || owner.isDead) {
+            return MobSpawnResult.Failed("Summon owner is not available: ${owner.uniqueId}", OperationCode.PARENT_INACTIVE)
+        }
         val ownerDefinition = findDefinition(owner)
         val maxActive = ownerDefinition?.summons?.maxActive ?: 16
         val active = summonedBy(owner.uniqueId).count { it.isValid }
         if (active >= maxActive) {
-            return MobSpawnResult.Failed("Summon limit reached for ${MobIdentity.definitionId(owner) ?: owner.uniqueId}: $maxActive")
+            return MobSpawnResult.Failed("Summon limit reached for ${MobIdentity.definitionId(owner) ?: owner.uniqueId}: $maxActive", OperationCode.CAPACITY)
         }
-        return spawn(id, location, owner)
+        return spawnPrepared(plan, location, owner, batchId, executionId, tag)
     }
 
     fun summonedBy(ownerId: UUID): List<Entity> = Bukkit.getWorlds()
         .flatMap { it.entities }
-        .filter { it.isValid && MobIdentity.summonOwner(it) == ownerId }
+        .filter { it.isValid && !it.isDead && !MobIdentity.isSummonCleanup(it) && MobIdentity.summonOwner(it) == ownerId }
 
     fun cleanupSummons(owner: Entity): Int {
         val cleanup = findDefinition(owner)?.summons?.cleanupOnDeath ?: true
         if (!cleanup) return 0
         val summons = summonedBy(owner.uniqueId)
-        summons.forEach(Entity::remove)
+        summons.forEach { MobIdentity.markSummonCleanup(it) }
+        summons.forEach { cleanupSummons(it); it.remove() }
         return summons.size
     }
 

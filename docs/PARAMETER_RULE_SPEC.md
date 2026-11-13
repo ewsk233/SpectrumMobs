@@ -24,11 +24,11 @@ skill flame_nova(radius: Number = 5, damage: Number = 12, windup: Duration = 30t
 
 ## 子技能与 YAML
 
-`skills.cast` 的控制参数为 `id`、`caster`、`target`、可选 `linked` 和 `ignoreRejected`；目标技能声明的其他命名参数作为实参。`ignoreRejected` 适合周期行为在冷却或施法组占用时静默跳过：
+`mechanic.skills.cast` 的控制参数为 `id`、`caster`、`target`、可选 `linked` 和 `ignoreRejected`；目标技能声明的其他命名参数作为实参。`ignoreRejected` 适合周期行为在冷却或施法组占用时静默跳过：
 
 ```sms
 skill parent {
-    let child = skills.cast("spectrum:flame_nova", caster, target, linked = true, radius = 8, damage = 20, windup = 2s)
+    let child = mechanic.skills.cast("spectrum:flame_nova", caster, target, linked = true, radius = 8, damage = 20, windup = 2s)
 }
 ```
 
@@ -80,7 +80,7 @@ skill attack {
 }
 ```
 
-规则函数必须声明参数和返回类型，可以返回布尔、数字、时长、位置、实体或列表。规则函数只能同步只读求值：禁止 `wait`、Mechanics、命令、`skills.cast` 和状态写入；不隐式捕获 `caster` 或 `target`；禁止递归和循环导入；嵌套调用共享调用深度与规则步数预算；所有路径必须返回声明类型。
+规则函数必须声明参数和返回类型，可以返回布尔、数字、时长、位置、实体或列表。规则函数只能同步只读求值：禁止 `wait`、Mechanics、命令、`mechanic.skills.cast` 和状态写入；不隐式捕获 `caster` 或 `target`；禁止递归和循环导入；嵌套调用共享调用深度与规则步数预算；所有路径必须返回声明类型。
 
 导入 ID 必须存在，别名不能覆盖内置上下文或重复声明。规则签名、实现和技能 Typed IR 在同一快照中发布；重载后已经运行的技能继续使用旧快照。
 

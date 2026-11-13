@@ -1,5 +1,7 @@
 package org.ewsk.spectrummobs.script
 
+import org.ewsk.spectrummobs.core.OperationCode
+
 sealed interface RuntimeValue {
     data object NullValue : RuntimeValue
 
@@ -52,6 +54,18 @@ sealed interface RuntimeValue {
     ) : RuntimeValue
 
     data class ListValue(val values: List<RuntimeValue>) : RuntimeValue
+
+    /** count/requested 是调用时快照；平台批次状态只能通过显式注册的查询读取。 */
+    data class OperationResultValue(
+        val id: String,
+        val count: Int,
+        val requested: Int,
+        val code: OperationCode = OperationCode.SUCCESS,
+        val reason: String = "",
+        val origin: Any? = null
+    ) : RuntimeValue {
+        val success: Boolean get() = code == OperationCode.SUCCESS && count == requested
+    }
 
     data class ServiceValue(val name: String) : RuntimeValue
 
